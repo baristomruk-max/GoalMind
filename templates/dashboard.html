@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Football Data{% endblock %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="stats-grid" id="stats-grid">
+    <div class="stat-card stat-card-primary">
+        <div class="stat-icon">⚽</div>
+        <div class="stat-info">
+            <div class="stat-value" id="stat-matches">—</div>
+            <div class="stat-label">Toplam Maç</div>
+        </div>
+    </div>
+    <div class="stat-card stat-card-success">
+        <div class="stat-icon">🏟️</div>
+        <div class="stat-info">
+            <div class="stat-value" id="stat-leagues">—</div>
+            <div class="stat-label">Lig Sayısı</div>
+        </div>
+    </div>
+    <div class="stat-card stat-card-warning">
+        <div class="stat-icon">👥</div>
+        <div class="stat-info">
+            <div class="stat-value" id="stat-teams">—</div>
+            <div class="stat-label">Takım Sayısı</div>
+        </div>
+    </div>
+    <div class="stat-card stat-card-danger">
+        <div class="stat-icon">🥅</div>
+        <div class="stat-info">
+            <div class="stat-value" id="stat-goals">—</div>
+            <div class="stat-label">Toplam Gol</div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="charts-row">
+    <div class="chart-card">
+        <div class="card-header">
+            <h3>Sonuç Dağılımı</h3>
+        </div>
+        <div class="card-body chart-body">
+            <canvas id="results-chart"></canvas>
+        </div>
+    </div>
+    <div class="chart-card">
+        <div class="card-header">
+            <h3>Lig Bazında Gol Ortalaması</h3>
+        </div>
+        <div class="card-body chart-body">
+            <canvas id="goals-chart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Matches -->
+<div class="card">
+    <div class="card-header">
+        <h3>Son Maçlar</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="data-table" id="recent-matches-table">
+                <thead>
+                    <tr>
+                        <th>Tarih</th>
+                        <th>Lig</th>
+                        <th>Ev Sahibi</th>
+                        <th>Skor</th>
+                        <th>Deplasman</th>
+                        <th>S.T.</th>
+                    </tr>
+                </thead>
+                <tbody id="recent-matches-body">
+                    <tr><td colspan="6" class="text-center text-muted">Yükleniyor...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    loadDashboard();
+});
+
+async function loadDashboard() {
+    try {
+        // Stats
+        const stats = await api('/api/stats');
+        animateNumber('stat-matches', stats.total_matches);
+        animateNumber('stat-leagues', stats.total_leagues);
+        animateNumber('stat-teams', stats.total_teams);
+        animateNumber('stat-goals', stats.total_goals);
+
+        // Sonuç pasta grafiği
+        if (stats.home_wins || stats.draws || stats.away_wins) {
+            createDoughnutChart('results-chart', {
+                labels: ['Ev Sahibi', 'Beraberlik', 'Deplasman'],
+                data: [stats.home_wins, stats.draws, stats.away_wins],
+                colors: ['#22c55e', '#f59e0b', '#ef4444']
+            });
+        }
+
+        // Lig bazında gol ortalaması
+        const goalsData = await api('/api/goals-by-league');
+        if (goalsData.length > 0) {
+            const top15 = goalsData.slice(0, 15);
+            createBarChart('goals-chart', {
+                labels: top15.map(d => d.league_name.length > 20 ? d.league_name.slice(0, 20) + '…' : d.league_name),
+                data: top15.map(d => d.avg_goals),
+                label: 'Ort. Gol',
+                color: '#6366f1'
+            });
+        }
+
+        // Son maçlar
+        const matches = await api('/api/recent-matches?limit=30');
+        renderRecentMatches(matches);
+    } catch (err) {
+        console.error('Dashboard yükleme hatası:', err);
+    }
+}
+
+function renderRecentMatches(matches) {
+    const tbody = document.getElementById('recent-matches-body');
+    if (!matches.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Henüz veri yok. Önce verileri indirin.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = matches.map(m => {
+        const homeClass = m.ftr === 'H' ? 'text-win' : (m.ftr === 'A' ? 'text-loss' : '');
+        const awayClass = m.ftr === 'A' ? 'text-win' : (m.ftr === 'H' ? 'text-loss' : '');
+        return `<tr>
+            <td>${m.match_date || '—'}</td>
+            <td><span class="badge badge-league">${m.league_name || '—'}</span></td>
+            <td class="${homeClass}">
+                <a href="/team/${encodeURIComponent(m.home_team)}" class="team-link">${m.home_team}</a>
+            </td>
+            <td class="score-cell">${m.fthg ?? '?'} — ${m.ftag ?? '?'}</td>
+            <td class="${awayClass}">
+                <a href="/team/${encodeURIComponent(m.away_team)}" class="team-link">${m.away_team}</a>
+            </td>
+            <td><span class="badge badge-${m.ftr === 'H' ? 'home' : m.ftr === 'A' ? 'away' : 'draw'}">${m.ftr || '—'}</span></td>
+        </tr>`;
+    }).join('');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,27 @@
+2026-03-22 08:01:43 - --- ESPN Geriye Dönük Tarama Başlıyor (2026-03-15 -> 2026-03-22) ---
+2026-03-22 08:01:43 - Fetching matches for 2026-03-15...
+2026-03-22 08:01:44 -   -> ESPN returned 184 matches.
+2026-03-22 08:01:44 -   -> 52 tanesi veritabanına işlendi.
+2026-03-22 08:01:44 - Fetching matches for 2026-03-16...
+2026-03-22 08:01:45 -   -> ESPN returned 41 matches.
+2026-03-22 08:01:45 -   -> 6 tanesi veritabanına işlendi.
+2026-03-22 08:01:45 - Fetching matches for 2026-03-17...
+2026-03-22 08:01:46 -   -> ESPN returned 75 matches.
+2026-03-22 08:01:46 -   -> 1 tanesi veritabanına işlendi.
+2026-03-22 08:01:46 - Fetching matches for 2026-03-18...
+2026-03-22 08:01:47 -   -> ESPN returned 90 matches.
+2026-03-22 08:01:47 -   -> 11 tanesi veritabanına işlendi.
+2026-03-22 08:01:47 - Fetching matches for 2026-03-19...
+2026-03-22 08:01:48 -   -> ESPN returned 46 matches.
+2026-03-22 08:01:48 -   -> 6 tanesi veritabanına işlendi.
+2026-03-22 08:01:48 - Fetching matches for 2026-03-20...
+2026-03-22 08:01:49 -   -> ESPN returned 71 matches.
+2026-03-22 08:01:49 -   -> 18 tanesi veritabanına işlendi.
+2026-03-22 08:01:49 - Fetching matches for 2026-03-21...
+2026-03-22 08:01:49 -   -> ESPN returned 255 matches.
+2026-03-22 08:01:49 -   -> 53 tanesi veritabanına işlendi.
+2026-03-22 08:01:49 - Fetching matches for 2026-03-22...
+2026-03-22 08:01:51 -   -> Maç bulunamadı.
+2026-03-22 08:01:51 - 
+--- Tarama Tamamlandı. Toplam 147 maç eklendi/güncellendi. ---
+2026-03-22 08:01:51 - Veritabanındaki güncel toplam maç sayısı: 151075

@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Günün Kuponu - Football Data{% endblock %}
+
+{% block content %}
+<div class="daily-container">
+    <div style="text-align: center; margin-bottom: 40px;">
+        <h1 style="margin: 0; font-size: 2.5rem; color: var(--text);">💰 Günün Tahminleri</h1>
+        <p style="color: var(--text-light); margin-top: 10px;">Yapay Zeka, iddaa programındaki maçları canlı analiz ediyor.</p>
+        
+        <button onclick="fetchDaily()" class="btn btn-primary" id="btn-scan" style="margin-top:20px;">
+            <span class="btn-icon">🔍</span> Bülteni Tara ve Tahmin Et
+        </button>
+    </div>
+
+    <!-- Yükleme Göstergesi -->
+    <div id="loading" style="display: none; text-align: center; padding: 40px;">
+        <div class="spinner"></div>
+        <p style="margin-top: 16px; color: var(--text-light);">Bülten taranıyor ve yüzlerce eşleşme ML motorunda hesaba katılıyor... Lütfen bekleyin.</p>
+    </div>
+
+    <div id="error-msg" style="display: none; padding: 20px; background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--danger); border-radius: 8px; color: var(--danger); margin-bottom:20px;"></div>
+
+    <!-- Sonuçlar Paneli -->
+    <div id="results-panel" style="display: none;">
+        
+        <div class="grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 24px;">
+            <div class="card stat-card shadow">
+                <div class="stat-title">Taranan Maç Sayısı</div>
+                <div class="stat-value" id="stat-scraped">0</div>
+            </div>
+            <div class="card stat-card shadow">
+                <div class="stat-title">Eşleşen ve Tahminlenen</div>
+                <div class="stat-value" id="stat-mapped" style="color: var(--success);">0</div>
+            </div>
+        </div>
+
+        <h2 style="margin-bottom: 16px;">🔥 Yapay Zeka Önerileri</h2>
+        <div class="table-container shadow">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tarih/Lig</th>
+                        <th>Ev Sahibi</th>
+                        <th>Deplasman</th>
+                        <th>Tahmin</th>
+                        <th>Güven</th>
+                        <th>Durum</th>
+                        <th>Beklenen Üst</th>
+                    </tr>
+                </thead>
+                <tbody id="predictions-body">
+                    <!-- Dinamik İçerik -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255,255,255,0.1);
+    border-left-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+@keyframes spin { 100% { transform: rotate(360deg); } }
+.badge-status {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.status-banko { background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid var(--success); }
+.status-guvenilir { background: rgba(59, 130, 246, 0.2); color: var(--primary); }
+.status-riskli { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+</style>
+
+<script>
+async function fetchDaily() {
+    const btn = document.getElementById('btn-scan');
+    const loading = document.getElementById('loading');
+    const results = document.getElementById('results-panel');
+    const errBox = document.getElementById('error-msg');
+    const tbody = document.getElementById('predictions-body');
+
+    btn.disabled = true;
+    loading.style.display = 'block';
+    results.style.display = 'none';
+    errBox.style.display = 'none';
+    tbody.innerHTML = '';
+
+    try {
+        const response = await fetch('/api/daily');
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Bilinmeyen bir hata oluştu');
+        }
+
+        document.getElementById('stat-scraped').textContent = data.total_scraped;
+        document.getElementById('stat-mapped').textContent = data.total_mapped;
+
+        if (data.predictions && data.predictions.length > 0) {
+            data.predictions.forEach(item => {
+                const row = document.createElement('tr');
+                
+                let badgeClass = 'status-riskli';
+                if (item.status.includes('BANKO')) badgeClass = 'status-banko';
+                else if (item.status.includes('GÜVENİLİR')) badgeClass = 'status-guvenilir';
+
+                row.innerHTML = `
+                    <td>Günün Maçı</td>
+                    <td style="font-weight: 600;">${item.db_home} <br><small style="color:#666">(${item.original_home})</small></td>
+                    <td style="font-weight: 600;">${item.db_away} <br><small style="color:#666">(${item.original_away})</small></td>
+                    <td style="color: var(--primary); font-weight: bold;">${item.prediction}</td>
+                    <td>%${item.confidence.toFixed(1)}</td>
+                    <td><span class="badge-status ${badgeClass}">${item.status}</span></td>
+                    <td>%${item.details.error ? '-' : item.details.goals_market.over_25}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Bugün veritabanımızla uyuşan maç bulunamadı.</td></tr>';
+        }
+
+        results.style.display = 'block';
+    } catch (e) {
+        errBox.textContent = e.message;
+        errBox.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        loading.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

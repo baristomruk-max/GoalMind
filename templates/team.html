@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+{% block title %}{{ team_name }} - Football Data{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 id="team-title">{{ team_name }}</h1>
+</div>
+
+<!-- Team Stats Cards -->
+<div class="stats-grid" id="team-stats-grid">
+    <div class="stat-card stat-card-primary">
+        <div class="stat-icon">⚽</div>
+        <div class="stat-info">
+            <div class="stat-value" id="ts-matches">—</div>
+            <div class="stat-label">Maç</div>
+        </div>
+    </div>
+    <div class="stat-card stat-card-success">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-info">
+            <div class="stat-value" id="ts-wins">—</div>
+            <div class="stat-label">Galibiyet</div>
+        </div>
+    </div>
+    <div class="stat-card stat-card-warning">
+        <div class="stat-icon">🥅</div>
+        <div class="stat-info">
+            <div class="stat-value" id="ts-goals">—</div>
+            <div class="stat-label">Gol</div>
+        </div>
+    </div>
+    <div class="stat-card stat-card-danger">
+        <div class="stat-icon">📈</div>
+        <div class="stat-info">
+            <div class="stat-value" id="ts-winpct">—</div>
+            <div class="stat-label">Galibiyet %</div>
+        </div>
+    </div>
+</div>
+
+<!-- Form & Charts Row -->
+<div class="charts-row">
+    <!-- Form -->
+    <div class="chart-card">
+        <div class="card-header"><h3>Son 10 Maç Formu</h3></div>
+        <div class="card-body">
+            <div class="form-display" id="form-display">
+                <!-- JS ile doldurulacak -->
+            </div>
+            <div class="form-summary" id="form-summary"></div>
+        </div>
+    </div>
+    <!-- Sonuç Dağılımı -->
+    <div class="chart-card">
+        <div class="card-header"><h3>Sonuç Dağılımı</h3></div>
+        <div class="card-body chart-body"><canvas id="team-results-chart"></canvas></div>
+    </div>
+</div>
+
+<!-- Detailed Stats -->
+<div class="charts-row">
+    <div class="card" style="flex: 1;">
+        <div class="card-header"><h3>Detaylı İstatistikler</h3></div>
+        <div class="card-body">
+            <div class="detail-stats-grid" id="detail-stats">
+                <!-- JS ile doldurulacak -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- H2H Section -->
+<div class="card">
+    <div class="card-header">
+        <h3>Karşılaştırma (Head-to-Head)</h3>
+    </div>
+    <div class="card-body">
+        <div class="h2h-search">
+            <input type="text" class="input-field" id="h2h-opponent"
+                   placeholder="Rakip takım adı yazın..." autocomplete="off">
+            <button class="btn btn-primary" onclick="loadH2H()">Karşılaştır</button>
+            <div class="search-results h2h-results" id="h2h-search-results" style="display:none;"></div>
+        </div>
+        <div id="h2h-content" style="display:none;">
+            <div class="h2h-summary" id="h2h-summary"></div>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Tarih</th>
+                            <th>Lig</th>
+                            <th>Ev Sahibi</th>
+                            <th>Skor</th>
+                            <th>Deplasman</th>
+                        </tr>
+                    </thead>
+                    <tbody id="h2h-matches-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Matches -->
+<div class="card">
+    <div class="card-header"><h3>Maçlar</h3></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Tarih</th>
+                        <th>Lig</th>
+                        <th>Ev Sahibi</th>
+                        <th>Skor</th>
+                        <th>Deplasman</th>
+                        <th>S.T.</th>
+                    </tr>
+                </thead>
+                <tbody id="team-matches-body">
+                    <tr><td colspan="6" class="text-center text-muted">Yükleniyor...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TEAM_NAME = "{{ team_name }}";
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadTeamData();
+    setupH2HSearch();
+});
+
+async function loadTeamData() {
+    // Stats
+    const stats = await api(`/api/team/${encodeURIComponent(TEAM_NAME)}/stats`);
+    if (stats && !stats.error) {
+        animateNumber('ts-matches', stats.total_matches);
+        animateNumber('ts-wins', stats.wins);
+        document.getElementById('ts-goals').textContent = `${stats.goals_for}:${stats.goals_against}`;
+        document.getElementById('ts-winpct').textContent = stats.win_percentage + '%';
+
+        // Detaylı istatistikler
+        document.getElementById('detail-stats').innerHTML = `
+            <div class="detail-stat">
+                <span class="detail-label">Ev Sahibi Maçlar</span>
+                <span class="detail-value">${stats.home_matches}</span>
+            </div>
+            <div class="detail-stat">
+                <span class="detail-label">Ev Galibiyetleri</span>
+                <span class="detail-value">${stats.home_wins}</span>
+            </div>
+            <div class="detail-stat">
+                <span class="detail-label">Deplasman Maçları</span>
+                <span class="detail-value">${stats.away_matches}</span>
+            </div>
+            <div class="detail-stat">
+                <span class="detail-label">Deplasman Galibiyetleri</span>
+                <span class="detail-value">${stats.away_wins}</span>
+            </div>
+            <div class="detail-stat">
+                <span class="detail-label">Beraberlikler</span>
+                <span class="detail-value">${stats.draws}</span>
+            </div>
+            <div class="detail-stat">
+                <span class="detail-label">Mağlubiyetler</span>
+                <span class="detail-value">${stats.losses}</span>
+            </div>
+            <div class="detail-stat">
+                <span class="detail-label">Ort. Atılan Gol</span>
+                <span class="detail-value">${stats.avg_goals_scored}</span>
+            </div>
+            <div class="detail-stat">
+                <span class="detail-label">Ort. Yenilen Gol</span>
+                <span class="detail-value">${stats.avg_goals_conceded}</span>
+            </div>
+            <div class="detail-stat">
+                <span class="detail-label">Gol Farkı</span>
+                <span class="detail-value ${stats.goal_diff > 0 ? 'text-win' : stats.goal_diff < 0 ? 'text-loss' : ''}">${stats.goal_diff > 0 ? '+' : ''}${stats.goal_diff}</span>
+            </div>
+            <div class="detail-stat">
+                <span class="detail-label">Clean Sheet</span>
+                <span class="detail-value">${stats.clean_sheets}</span>
+            </div>
+        `;
+
+        // Sonuç dağılımı grafiği
+        createDoughnutChart('team-results-chart', {
+            labels: ['Galibiyet', 'Beraberlik', 'Mağlubiyet'],
+            data: [stats.wins, stats.draws, stats.losses],
+            colors: ['#22c55e', '#f59e0b', '#ef4444']
+        });
+    }
+
+    // Form
+    const form = await api(`/api/team/${encodeURIComponent(TEAM_NAME)}/form?last_n=10`);
+    if (form) {
+        const formDiv = document.getElementById('form-display');
+        formDiv.innerHTML = form.form.map(r => {
+            const cls = r === 'W' ? 'form-win' : r === 'D' ? 'form-draw' : 'form-loss';
+            const label = r === 'W' ? 'G' : r === 'D' ? 'B' : 'M';
+            return `<span class="form-badge ${cls}">${label}</span>`;
+        }).join('');
+
+        document.getElementById('form-summary').innerHTML =
+            `<span>Son ${form.form.length} maç: <strong>${form.wins}G ${form.draws}B ${form.losses}M</strong> (${form.points} puan)</span>`;
+    }
+
+    // Maçlar
+    const matches = await api(`/api/team/${encodeURIComponent(TEAM_NAME)}/matches?limit=30`);
+    renderTeamMatches(matches);
+}
+
+function renderTeamMatches(matches) {
+    const tbody = document.getElementById('team-matches-body');
+    if (!matches || !matches.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Maç bulunamadı</td></tr>';
+        return;
+    }
+    tbody.innerHTML = matches.map(m => {
+        const isHome = m.home_team === TEAM_NAME;
+        const result = isHome ? m.ftr : (m.ftr === 'H' ? 'A' : m.ftr === 'A' ? 'H' : 'D');
+        const badgeClass = result === 'H' ? 'home' : result === 'A' ? 'away' : 'draw';
+        const resultText = isHome ?
+            (m.ftr === 'H' ? 'G' : m.ftr === 'D' ? 'B' : 'M') :
+            (m.ftr === 'A' ? 'G' : m.ftr === 'D' ? 'B' : 'M');
+        return `<tr>
+            <td>${m.match_date || '—'}</td>
+            <td><span class="badge badge-league">${m.league_name || '—'}</span></td>
+            <td class="${m.home_team === TEAM_NAME ? 'text-bold' : ''}">
+                <a href="/team/${encodeURIComponent(m.home_team)}" class="team-link">${m.home_team}</a>
+            </td>
+            <td class="score-cell">${m.fthg ?? '?'} — ${m.ftag ?? '?'}</td>
+            <td class="${m.away_team === TEAM_NAME ? 'text-bold' : ''}">
+                <a href="/team/${encodeURIComponent(m.away_team)}" class="team-link">${m.away_team}</a>
+            </td>
+            <td><span class="badge badge-${resultText === 'G' ? 'home' : resultText === 'M' ? 'away' : 'draw'}">${resultText}</span></td>
+        </tr>`;
+    }).join('');
+}
+
+function setupH2HSearch() {
+    const input = document.getElementById('h2h-opponent');
+    const results = document.getElementById('h2h-search-results');
+    let debounce;
+
+    input.addEventListener('input', () => {
+        clearTimeout(debounce);
+        const q = input.value.trim();
+        if (q.length < 2) { results.style.display = 'none'; return; }
+        debounce = setTimeout(async () => {
+            const teams = await api(`/api/teams/search?q=${encodeURIComponent(q)}`);
+            if (teams.length) {
+                results.innerHTML = teams
+                    .filter(t => t !== TEAM_NAME)
+                    .map(t => `<div class="search-item" onclick="selectH2HTeam('${t.replace(/'/g, "\\'")}')">${t}</div>`)
+                    .join('');
+                results.style.display = 'block';
+            } else {
+                results.style.display = 'none';
+            }
+        }, 300);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.h2h-search')) results.style.display = 'none';
+    });
+}
+
+function selectH2HTeam(team) {
+    document.getElementById('h2h-opponent').value = team;
+    document.getElementById('h2h-search-results').style.display = 'none';
+    loadH2H();
+}
+
+async function loadH2H() {
+    const opponent = document.getElementById('h2h-opponent').value.trim();
+    if (!opponent) return;
+
+    const data = await api(`/api/h2h/${encodeURIComponent(TEAM_NAME)}/${encodeURIComponent(opponent)}`);
+    if (!data || !data.total_matches) {
+        showToast('Karşılaşma bulunamadı', 'warning');
+        return;
+    }
+
+    document.getElementById('h2h-content').style.display = 'block';
+
+    document.getElementById('h2h-summary').innerHTML = `
+        <div class="h2h-stats">
+            <div class="h2h-team">
+                <div class="h2h-team-name">${data.team1}</div>
+                <div class="h2h-team-wins">${data.team1_wins}</div>
+            </div>
+            <div class="h2h-center">
+                <div class="h2h-draws">${data.draws}</div>
+                <div class="h2h-label">Beraberlik</div>
+                <div class="h2h-total">${data.total_matches} maç</div>
+            </div>
+            <div class="h2h-team">
+                <div class="h2h-team-name">${data.team2}</div>
+                <div class="h2h-team-wins">${data.team2_wins}</div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('h2h-matches-body').innerHTML = data.matches.map(m => `
+        <tr>
+            <td>${m.match_date || '—'}</td>
+            <td><span class="badge badge-league">${m.league_name || ''}</span></td>
+            <td class="${m.ftr === 'H' ? 'text-win' : ''}">${m.home_team}</td>
+            <td class="score-cell">${m.fthg} — ${m.ftag}</td>
+            <td class="${m.ftr === 'A' ? 'text-win' : ''}">${m.away_team}</td>
+        </tr>
+    `).join('');
+}
+</script>
+{% endblock %}

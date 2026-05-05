@@ -1,0 +1,2669 @@
+<!DOCTYPE html>
+<!-- saved from url=(0031)http://127.0.0.1:5000/predictor -->
+<html lang="tr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Dünya futbol liglerinden maç verileri, istatistikler ve analizler">
+    <title>Tahmin Motoru (Predictor) - Football Data</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com/">
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+    <link href="./Tahmin Motoru (Predictor) - Football Data_files/css2" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="./Tahmin Motoru (Predictor) - Football Data_files/chart.umd.min.js.indir"></script>
+
+    <!-- Ana CSS -->
+    <link rel="stylesheet" href="./Tahmin Motoru (Predictor) - Football Data_files/style.css">
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">⚽</span>
+                <span class="logo-text">FootballData</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="http://127.0.0.1:5000/" class="nav-item " id="nav-dashboard">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">Dashboard</span>
+            </a>
+            
+            <a href="http://127.0.0.1:5000/predictor" class="nav-item active" id="nav-predictor">
+                <span class="nav-icon">🔮</span>
+                <span class="nav-label">Tahmin Motoru</span>
+            </a>
+
+            <div class="nav-section-title">Ligler</div>
+            <div class="league-list" id="league-list"><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Argentina</div><a href="http://127.0.0.1:5000/league/23" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Argentina</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Austria</div><a href="http://127.0.0.1:5000/league/24" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Austria</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Belgium</div><a href="http://127.0.0.1:5000/league/15" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Jupiler League</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Brazil</div><a href="http://127.0.0.1:5000/league/25" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Brazil</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">China</div><a href="http://127.0.0.1:5000/league/26" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">China</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Colombia</div><a href="http://127.0.0.1:5000/league/27" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Colombia</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Denmark</div><a href="http://127.0.0.1:5000/league/30" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Denmark</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">England</div><a href="http://127.0.0.1:5000/league/2" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Championship</span>
+            </a><a href="http://127.0.0.1:5000/league/5" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Conference</span>
+            </a><a href="http://127.0.0.1:5000/league/3" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">League One</span>
+            </a><a href="http://127.0.0.1:5000/league/4" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">League Two</span>
+            </a><a href="http://127.0.0.1:5000/league/1" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Premier League</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Finland</div><a href="http://127.0.0.1:5000/league/33" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Finland</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">France</div><a href="http://127.0.0.1:5000/league/12" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Ligue 1</span>
+            </a><a href="http://127.0.0.1:5000/league/13" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Ligue 2</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Germany</div><a href="http://127.0.0.1:5000/league/9" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">2.Bundesliga</span>
+            </a><a href="http://127.0.0.1:5000/league/8" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Bundesliga</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Greece</div><a href="http://127.0.0.1:5000/league/18" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Super League</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Ireland</div><a href="http://127.0.0.1:5000/league/37" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Ireland</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Italy</div><a href="http://127.0.0.1:5000/league/10" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Serie A</span>
+            </a><a href="http://127.0.0.1:5000/league/11" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Serie B</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Japan</div><a href="http://127.0.0.1:5000/league/39" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Japan</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Mexico</div><a href="http://127.0.0.1:5000/league/40" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Mexico</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Netherlands</div><a href="http://127.0.0.1:5000/league/14" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Eredivisie</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Norway</div><a href="http://127.0.0.1:5000/league/41" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Norway</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Poland</div><a href="http://127.0.0.1:5000/league/44" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Poland</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Portugal</div><a href="http://127.0.0.1:5000/league/16" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Liga I</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Romania</div><a href="http://127.0.0.1:5000/league/45" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Romania</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Russia</div><a href="http://127.0.0.1:5000/league/46" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Russia</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Scotland</div><a href="http://127.0.0.1:5000/league/20" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Championship</span>
+            </a><a href="http://127.0.0.1:5000/league/21" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">League One</span>
+            </a><a href="http://127.0.0.1:5000/league/22" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">League Two</span>
+            </a><a href="http://127.0.0.1:5000/league/19" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Premiership</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">South Korea</div><a href="http://127.0.0.1:5000/league/49" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">South Korea</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Spain</div><a href="http://127.0.0.1:5000/league/6" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">La Liga</span>
+            </a><a href="http://127.0.0.1:5000/league/7" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Segunda</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Sweden</div><a href="http://127.0.0.1:5000/league/50" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Sweden</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Switzerland</div><a href="http://127.0.0.1:5000/league/51" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Switzerland</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Turkey</div><a href="http://127.0.0.1:5000/league/17" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">Super Lig</span>
+            </a><div style="padding: 8px 16px; font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase;">USA - MLS</div><a href="http://127.0.0.1:5000/league/54" class="nav-item " style="padding-left: 24px; font-size: 0.85rem;">
+                <span class="status-dot success" style="width: 6px; height: 6px; margin-right: 6px; display: inline-block;"></span>
+                <span class="nav-label">MLS</span>
+            </a></div>
+
+            <div class="nav-section-title">Araçlar</div>
+            <a href="http://127.0.0.1:5000/predictor#" class="nav-item" id="nav-fetch-quick" onclick="startFetch(true)">
+                <span class="nav-icon">⚡</span>
+                <span class="nav-label">Hızlı Güncelle (25/26)</span>
+            </a>
+            <a href="http://127.0.0.1:5000/predictor#" class="nav-item" id="nav-fetch" onclick="startFetch(false)">
+                <span class="nav-icon">📥</span>
+                <span class="nav-label">Tüm Geçmişi İndir</span>
+            </a>
+            <a href="http://127.0.0.1:5000/predictor#" class="nav-item" id="nav-import" onclick="startImport()">
+                <span class="nav-icon">📦</span>
+                <span class="nav-label">Veritabanına Aktar</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="fetch-status" id="fetch-status" style="display:none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <span class="progress-text" id="progress-text">İndiriliyor...</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <button class="menu-toggle" id="menu-toggle" onclick="toggleSidebar()">☰</button>
+            <div class="search-container">
+                <input type="text" class="search-input" id="team-search" placeholder="Takım ara..." autocomplete="off">
+                <div class="search-results" id="search-results" style="display:none;"></div>
+            </div>
+            <div class="topbar-actions">
+                <span class="status-badge" id="db-status">
+                    <span class="status-dot active"></span>
+                    <span id="db-status-text">150.950 Maç | 1075 Takım</span>
+                </span>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="page-content">
+            
+<div class="predictor-container">
+    <div class="page-header">
+        <h1>🔮 Maç Tahmin Motoru <span class="badge" style="background:var(--primary); color:white; font-size:12px; padding:4px 8px; border-radius:12px;">BETA</span></h1>
+        <p>Poisson Dağılımı ve istatistiksel modeller kullanılarak hesaplanmış maç tahmin simülasyonu.</p>
+    </div>
+
+    <!-- Takım Seçim Kartı -->
+    <div class="card glass-card predictor-selector">
+        <div class="vs-container">
+            <div class="team-select-wrapper">
+                <label>Ev Sahibi Takım</label>
+                <input type="text" id="home-team-input" placeholder="Takım yazın..." list="team-datalist" autocomplete="off">
+            </div>
+            
+            <div class="vs-badge">VS</div>
+            
+            <div class="team-select-wrapper">
+                <label>Deplasman Takım</label>
+                <input type="text" id="away-team-input" placeholder="Takım yazın..." list="team-datalist" autocomplete="off">
+            </div>
+        </div>
+        
+        <datalist id="team-datalist">
+            
+            <option value="A. Klagenfurt">
+            
+            </option><option value="A. Lustenau">
+            
+            </option><option value="AC Oulu">
+            
+            </option><option value="AEK">
+            
+            </option><option value="AFC Eskilstuna">
+            
+            </option><option value="AFC Wimbledon">
+            
+            </option><option value="AIK">
+            
+            </option><option value="AVS">
+            
+            </option><option value="AZ Alkmaar">
+            
+            </option><option value="Aalborg">
+            
+            </option><option value="Aalesund">
+            
+            </option><option value="Aarau">
+            
+            </option><option value="Aarhus">
+            
+            </option><option value="Aberdeen">
+            
+            </option><option value="Academica">
+            
+            </option><option value="Academica Clinceni">
+            
+            </option><option value="Accrington">
+            
+            </option><option value="Ad. Demirspor">
+            
+            </option><option value="Adanaspor">
+            
+            </option><option value="Admira">
+            
+            </option><option value="Airdrie Utd">
+            
+            </option><option value="Ajaccio">
+            
+            </option><option value="Ajaccio GFCO">
+            
+            </option><option value="Ajax">
+            
+            </option><option value="Akhisar Belediyespor">
+            
+            </option><option value="Akhmat Grozny">
+            
+            </option><option value="Akron Togliatti">
+            
+            </option><option value="Alanyaspor">
+            
+            </option><option value="Alaves">
+            
+            </option><option value="Albacete">
+            
+            </option><option value="Albion Rvs">
+            
+            </option><option value="Albirex Niigata">
+            
+            </option><option value="Alcorcon">
+            
+            </option><option value="Aldershot">
+            
+            </option><option value="Aldosivi">
+            
+            </option><option value="Alessandria">
+            
+            </option><option value="All Boys">
+            
+            </option><option value="Alloa">
+            
+            </option><option value="Almere City">
+            
+            </option><option value="Almeria">
+            
+            </option><option value="Altach">
+            
+            </option><option value="Altay">
+            
+            </option><option value="Altrincham">
+            
+            </option><option value="Alverca">
+            
+            </option><option value="America MG">
+            
+            </option><option value="Amiens">
+            
+            </option><option value="Amkar">
+            
+            </option><option value="Amorebieta">
+            
+            </option><option value="Anderlecht">
+            
+            </option><option value="Andorra">
+            
+            </option><option value="Angers">
+            
+            </option><option value="Ankaragucu">
+            
+            </option><option value="Annan Athletic">
+            
+            </option><option value="Annecy">
+            
+            </option><option value="Antalyaspor">
+            
+            </option><option value="Antwerp">
+            
+            </option><option value="Apollon">
+            
+            </option><option value="Arbroath">
+            
+            </option><option value="Argentinos Jrs">
+            
+            </option><option value="Aris">
+            
+            </option><option value="Arka Gdynia">
+            
+            </option><option value="Arouca">
+            
+            </option><option value="Arsenal">
+            
+            </option><option value="Arsenal Sarandi">
+            
+            </option><option value="Arsenal Tula">
+            
+            </option><option value="Ascoli">
+            
+            </option><option value="Asteras Tripolis">
+            
+            </option><option value="Aston Villa">
+            
+            </option><option value="Astra">
+            
+            </option><option value="Atalanta">
+            
+            </option><option value="Ath Bilbao">
+            
+            </option><option value="Ath Bilbao B">
+            
+            </option><option value="Ath Madrid">
+            
+            </option><option value="Athens Kallithea">
+            
+            </option><option value="Athletico-PR">
+            
+            </option><option value="Athlone">
+            
+            </option><option value="Atl. Rafaela">
+            
+            </option><option value="Atl. San Luis">
+            
+            </option><option value="Atl. Tucuman">
+            
+            </option><option value="Atlanta Utd">
+            
+            </option><option value="Atlante">
+            
+            </option><option value="Atlas">
+            
+            </option><option value="Atletico GO">
+            
+            </option><option value="Atletico-MG">
+            
+            </option><option value="Atromitos">
+            
+            </option><option value="Atvidabergs">
+            
+            </option><option value="Augsburg">
+            
+            </option><option value="Austin FC">
+            
+            </option><option value="Austria Vienna">
+            
+            </option><option value="Auxerre">
+            
+            </option><option value="Avai">
+            
+            </option><option value="Avellino">
+            
+            </option><option value="Aves">
+            
+            </option><option value="Avispa Fukuoka">
+            
+            </option><option value="Ayr">
+            
+            </option><option value="BW Linz">
+            
+            </option><option value="Bahia">
+            
+            </option><option value="Baltika">
+            
+            </option><option value="Banfield">
+            
+            </option><option value="Barcelona">
+            
+            </option><option value="Barcelona B">
+            
+            </option><option value="Bari">
+            
+            </option><option value="Barnet">
+            
+            </option><option value="Barnsley">
+            
+            </option><option value="Barracas Central">
+            
+            </option><option value="Barrow">
+            
+            </option><option value="Basel">
+            
+            </option><option value="Bastia">
+            
+            </option><option value="Bayern Munich">
+            
+            </option><option value="Beerschot VA">
+            
+            </option><option value="Beijing Guoan">
+            
+            </option><option value="Beijing Renhe">
+            
+            </option><option value="Belenenses">
+            
+            </option><option value="Belgrano">
+            
+            </option><option value="Benevento">
+            
+            </option><option value="Benfica">
+            
+            </option><option value="Berwick">
+            
+            </option><option value="Besiktas">
+            
+            </option><option value="Betis">
+            
+            </option><option value="Beziers">
+            
+            </option><option value="Bielefeld">
+            
+            </option><option value="Birmingham">
+            
+            </option><option value="Bistrita">
+            
+            </option><option value="Blackburn">
+            
+            </option><option value="Blackpool">
+            
+            </option><option value="Boavista">
+            
+            </option><option value="Boca Juniors">
+            
+            </option><option value="Bochum">
+            
+            </option><option value="Bodo/Glimt">
+            
+            </option><option value="Bodrumspor">
+            
+            </option><option value="Bohemians">
+            
+            </option><option value="Bologna">
+            
+            </option><option value="Bolton">
+            
+            </option><option value="Bonnyrigg Rose">
+            
+            </option><option value="Bordeaux">
+            
+            </option><option value="Boreham Wood">
+            
+            </option><option value="Boston Utd">
+            
+            </option><option value="Botafogo RJ">
+            
+            </option><option value="Boulogne">
+            
+            </option><option value="Bourg Peronnas">
+            
+            </option><option value="Bournemouth">
+            
+            </option><option value="Brackley Town">
+            
+            </option><option value="Bradford">
+            
+            </option><option value="Bragantino">
+            
+            </option><option value="Brage">
+            
+            </option><option value="Braintree Town">
+            
+            </option><option value="Brann">
+            
+            </option><option value="Braunschweig">
+            
+            </option><option value="Bray">
+            
+            </option><option value="Brechin">
+            
+            </option><option value="Brentford">
+            
+            </option><option value="Brescia">
+            
+            </option><option value="Brest">
+            
+            </option><option value="Brighton">
+            
+            </option><option value="Bristol City">
+            
+            </option><option value="Bristol Rvs">
+            
+            </option><option value="Bromley">
+            
+            </option><option value="Brommapojkarna">
+            
+            </option><option value="Brondby">
+            
+            </option><option value="Bryne">
+            
+            </option><option value="Burgos">
+            
+            </option><option value="Burnley">
+            
+            </option><option value="Bursaspor">
+            
+            </option><option value="Burton">
+            
+            </option><option value="Bury">
+            
+            </option><option value="Buyuksehyr">
+            
+            </option><option value="CF Montreal">
+            
+            </option><option value="CFR Cluj">
+            
+            </option><option value="CS Turnu Severin">
+            
+            </option><option value="CSA">
+            
+            </option><option value="CSKA Moscow">
+            
+            </option><option value="Cabinteely">
+            
+            </option><option value="Cadiz">
+            
+            </option><option value="Caen">
+            
+            </option><option value="Cagliari">
+            
+            </option><option value="Calarasi">
+            
+            </option><option value="Cambridge">
+            
+            </option><option value="Cambuur">
+            
+            </option><option value="Cangzhou">
+            
+            </option><option value="Cardiff">
+            
+            </option><option value="Carlisle">
+            
+            </option><option value="Carpi">
+            
+            </option><option value="Carrarese">
+            
+            </option><option value="Cartagena">
+            
+            </option><option value="Casa Pia">
+            
+            </option><option value="Castellon">
+            
+            </option><option value="Catanzaro">
+            
+            </option><option value="Ceahlaul">
+            
+            </option><option value="Ceara">
+            
+            </option><option value="Celta">
+            
+            </option><option value="Celtic">
+            
+            </option><option value="Central Cordoba">
+            
+            </option><option value="Cercle Brugge">
+            
+            </option><option value="Cerezo Osaka">
+            
+            </option><option value="Cesena">
+            
+            </option><option value="Ceuta">
+            
+            </option><option value="Chacarita Juniors">
+            
+            </option><option value="Chambly">
+            
+            </option><option value="Changchun Yatai">
+            
+            </option><option value="Chapecoense-SC">
+            
+            </option><option value="Charleroi">
+            
+            </option><option value="Charlotte">
+            
+            </option><option value="Charlton">
+            
+            </option><option value="Chateauroux">
+            
+            </option><option value="Chaves">
+            
+            </option><option value="Chelsea">
+            
+            </option><option value="Cheltenham">
+            
+            </option><option value="Chengdu Rongcheng">
+            
+            </option><option value="Chester">
+            
+            </option><option value="Chesterfield">
+            
+            </option><option value="Chiapas">
+            
+            </option><option value="Chicago Fire">
+            
+            </option><option value="Chievo">
+            
+            </option><option value="Chindia Targoviste">
+            
+            </option><option value="Chivas USA">
+            
+            </option><option value="Chongqing Liangjiang Athletic">
+            
+            </option><option value="Chongqing Tonglianglong">
+            
+            </option><option value="Chorley">
+            
+            </option><option value="Cittadella">
+            
+            </option><option value="Clermont">
+            
+            </option><option value="Club America">
+            
+            </option><option value="Club Brugge">
+            
+            </option><option value="Club Leon">
+            
+            </option><option value="Club Tijuana">
+            
+            </option><option value="Clyde">
+            
+            </option><option value="Cobh Ramblers">
+            
+            </option><option value="Colchester">
+            
+            </option><option value="Colon Santa FE">
+            
+            </option><option value="Colon Santa Fe">
+            
+            </option><option value="Colorado Rapids">
+            
+            </option><option value="Columbus Crew">
+            
+            </option><option value="Como">
+            
+            </option><option value="Concarneau">
+            
+            </option><option value="Concordia">
+            
+            </option><option value="Cordoba">
+            
+            </option><option value="Corinthians">
+            
+            </option><option value="Coritiba">
+            
+            </option><option value="Cork City">
+            
+            </option><option value="Corona Brasov">
+            
+            </option><option value="Cosenza">
+            
+            </option><option value="Cove Rangers">
+            
+            </option><option value="Coventry">
+            
+            </option><option value="Cowdenbeath">
+            
+            </option><option value="Cracovia">
+            
+            </option><option value="Crawley Town">
+            
+            </option><option value="Cremonese">
+            
+            </option><option value="Creteil">
+            
+            </option><option value="Crewe">
+            
+            </option><option value="Criciuma">
+            
+            </option><option value="Crotone">
+            
+            </option><option value="Crucero del Norte">
+            
+            </option><option value="Cruz Azul">
+            
+            </option><option value="Cruzeiro">
+            
+            </option><option value="Crystal Palace">
+            
+            </option><option value="Csikszereda M. Ciuc">
+            
+            </option><option value="Cuiaba">
+            
+            </option><option value="Cultural Leonesa">
+            
+            </option><option value="DC United">
+            
+            </option><option value="Daco-Getica Bucuresti">
+            
+            </option><option value="Dag and Red">
+            
+            </option><option value="Dalian Pro">
+            
+            </option><option value="Dalian Yifang F.C.">
+            
+            </option><option value="Dalian Yingbo">
+            
+            </option><option value="Dalkurd">
+            
+            </option><option value="Darmstadt">
+            
+            </option><option value="Defensa y Justicia">
+            
+            </option><option value="Degerfors">
+            
+            </option><option value="Den Haag">
+            
+            </option><option value="Dender">
+            
+            </option><option value="Denizlispor">
+            
+            </option><option value="Dep. Riestra">
+            
+            </option><option value="Derby">
+            
+            </option><option value="Derry City">
+            
+            </option><option value="Dijon">
+            
+            </option><option value="Din. Bucuresti">
+            
+            </option><option value="Dinamo Bucuresti">
+            
+            </option><option value="Djurgarden">
+            
+            </option><option value="Doncaster">
+            
+            </option><option value="Dorados de Sinaloa">
+            
+            </option><option value="Dorking">
+            
+            </option><option value="Dortmund">
+            
+            </option><option value="Dover Athletic">
+            
+            </option><option value="Dresden">
+            
+            </option><option value="Drogheda">
+            
+            </option><option value="Duisburg">
+            
+            </option><option value="Dumbarton">
+            
+            </option><option value="Dundalk">
+            
+            </option><option value="Dundee">
+            
+            </option><option value="Dundee United">
+            
+            </option><option value="Dunfermline">
+            
+            </option><option value="Dunkerque">
+            
+            </option><option value="Dynamo Makhachkala">
+            
+            </option><option value="Dynamo Moscow">
+            
+            </option><option value="East Fife">
+            
+            </option><option value="East Kilbride">
+            
+            </option><option value="East Stirling">
+            
+            </option><option value="Eastleigh">
+            
+            </option><option value="Ebbsfleet">
+            
+            </option><option value="Edinburgh City">
+            
+            </option><option value="Eibar">
+            
+            </option><option value="Ein Frankfurt">
+            
+            </option><option value="Ekenas">
+            
+            </option><option value="Elche">
+            
+            </option><option value="Eldense">
+            
+            </option><option value="Elfsborg">
+            
+            </option><option value="Elgin">
+            
+            </option><option value="Elversberg">
+            
+            </option><option value="Empoli">
+            
+            </option><option value="Erzgebirge Aue">
+            
+            </option><option value="Erzurum BB">
+            
+            </option><option value="Esbjerg">
+            
+            </option><option value="Eskisehirspor">
+            
+            </option><option value="Espanol">
+            
+            </option><option value="Estoril">
+            
+            </option><option value="Estrela">
+            
+            </option><option value="Estudiantes L.P.">
+            
+            </option><option value="Estudiantes Rio Cuarto">
+            
+            </option><option value="Eupen">
+            
+            </option><option value="Everton">
+            
+            </option><option value="Evian Thonon Gaillard">
+            
+            </option><option value="Excelsior">
+            
+            </option><option value="Exeter">
+            
+            </option><option value="Extremadura UD">
+            
+            </option><option value="Eyupspor">
+            
+            </option><option value="FC Arges">
+            
+            </option><option value="FC Botosani">
+            
+            </option><option value="FC Brasov">
+            
+            </option><option value="FC Cincinnati">
+            
+            </option><option value="FC Copenhagen">
+            
+            </option><option value="FC Dallas">
+            
+            </option><option value="FC Edinburgh">
+            
+            </option><option value="FC Emmen">
+            
+            </option><option value="FC Hermannstadt">
+            
+            </option><option value="FC Koln">
+            
+            </option><option value="FC Rapid Bucuresti">
+            
+            </option><option value="FC Tokyo">
+            
+            </option><option value="FC Voluntari">
+            
+            </option><option value="FCSB">
+            
+            </option><option value="FK Anzi Makhackala">
+            
+            </option><option value="FK Rostov">
+            
+            </option><option value="Fakel Voronezh">
+            
+            </option><option value="Falkenbergs">
+            
+            </option><option value="Falkirk">
+            
+            </option><option value="Famalicao">
+            
+            </option><option value="Farense">
+            
+            </option><option value="Farul Constanta">
+            
+            </option><option value="Feirense">
+            
+            </option><option value="Fenerbahce">
+            
+            </option><option value="FeralpiSalo">
+            
+            </option><option value="Ferrol">
+            
+            </option><option value="Feyenoord">
+            
+            </option><option value="Figueirense">
+            
+            </option><option value="Finn Harps">
+            
+            </option><option value="Fiorentina">
+            
+            </option><option value="Flamengo RJ">
+            
+            </option><option value="Fleetwood Town">
+            
+            </option><option value="Fluminense">
+            
+            </option><option value="Foggia">
+            
+            </option><option value="For Sittard">
+            
+            </option><option value="Forest Green">
+            
+            </option><option value="Forfar">
+            
+            </option><option value="Fortaleza">
+            
+            </option><option value="Fortuna Dusseldorf">
+            
+            </option><option value="Frankfurt FSV">
+            
+            </option><option value="Fredericia">
+            
+            </option><option value="Fredrikstad">
+            
+            </option><option value="Freiburg">
+            
+            </option><option value="Frosinone">
+            
+            </option><option value="Fuenlabrada">
+            
+            </option><option value="Fulham">
+            
+            </option><option value="Fylde">
+            
+            </option><option value="GAIS">
+            
+            </option><option value="GKS Belchatow">
+            
+            </option><option value="GKS Katowice">
+            
+            </option><option value="Galatasaray">
+            
+            </option><option value="Galway">
+            
+            </option><option value="Gamba Osaka">
+            
+            </option><option value="Gateshead">
+            
+            </option><option value="Gaz Metan Medias">
+            
+            </option><option value="Gaziantep">
+            
+            </option><option value="Gaziantepspor">
+            
+            </option><option value="Gefle">
+            
+            </option><option value="Genclerbirligi">
+            
+            </option><option value="Genk">
+            
+            </option><option value="Genoa">
+            
+            </option><option value="Gent">
+            
+            </option><option value="Getafe">
+            
+            </option><option value="Giannina">
+            
+            </option><option value="Gil Vicente">
+            
+            </option><option value="Gillingham">
+            
+            </option><option value="Gimnasia L.P.">
+            
+            </option><option value="Gimnasia Mendoza">
+            
+            </option><option value="Gimnastic">
+            
+            </option><option value="Giresunspor">
+            
+            </option><option value="Girona">
+            
+            </option><option value="Gloria Buzau">
+            
+            </option><option value="Gnistan">
+            
+            </option><option value="Go Ahead Eagles">
+            
+            </option><option value="Godoy Cruz">
+            
+            </option><option value="Goias">
+            
+            </option><option value="Gornik Z.">
+            
+            </option><option value="Gornik Zabrze">
+            
+            </option><option value="Goteborg">
+            
+            </option><option value="Goztep">
+            
+            </option><option value="Graafschap">
+            
+            </option><option value="Granada">
+            
+            </option><option value="Grasshoppers">
+            
+            </option><option value="Grazer AK">
+            
+            </option><option value="Gremio">
+            
+            </option><option value="Grenoble">
+            
+            </option><option value="Greuther Furth">
+            
+            </option><option value="Grimsby">
+            
+            </option><option value="Grodig">
+            
+            </option><option value="Groningen">
+            
+            </option><option value="Guadalajara Chivas">
+            
+            </option><option value="Guangzhou City">
+            
+            </option><option value="Guangzhou Evergrande">
+            
+            </option><option value="Guangzhou FC">
+            
+            </option><option value="Guangzhou R&amp;F">
+            
+            </option><option value="Guimaraes">
+            
+            </option><option value="Guingamp">
+            
+            </option><option value="Guiseley">
+            
+            </option><option value="Guizhou Zhicheng">
+            
+            </option><option value="HIFK">
+            
+            </option><option value="HJK">
+            
+            </option><option value="Hacken">
+            
+            </option><option value="Haka">
+            
+            </option><option value="Halifax">
+            
+            </option><option value="Halmstad">
+            
+            </option><option value="Ham-Kam">
+            
+            </option><option value="HamKam">
+            
+            </option><option value="Hamburg">
+            
+            </option><option value="Hamilton">
+            
+            </option><option value="Hammarby">
+            
+            </option><option value="Hangzhou Greentown">
+            
+            </option><option value="Hannover">
+            
+            </option><option value="Hansa Rostock">
+            
+            </option><option value="Harrogate">
+            
+            </option><option value="Hartberg">
+            
+            </option><option value="Hartlepool">
+            
+            </option><option value="Hatayspor">
+            
+            </option><option value="Haugesund">
+            
+            </option><option value="Havant &amp; Waterlooville">
+            
+            </option><option value="Hearts">
+            
+            </option><option value="Hebei">
+            
+            </option><option value="Heerenveen">
+            
+            </option><option value="Heidenheim">
+            
+            </option><option value="Helsingborg">
+            
+            </option><option value="Helsingor">
+            
+            </option><option value="Henan Songshan Longmen">
+            
+            </option><option value="Heracles">
+            
+            </option><option value="Hertha">
+            
+            </option><option value="Hibernian">
+            
+            </option><option value="Hobro">
+            
+            </option><option value="Hoffenheim">
+            
+            </option><option value="Hokkaido Consadole Sapporo">
+            
+            </option><option value="Holstein Kiel">
+            
+            </option><option value="Honefoss">
+            
+            </option><option value="Honka">
+            
+            </option><option value="Horsens">
+            
+            </option><option value="Houston Dynamo">
+            
+            </option><option value="Huddersfield">
+            
+            </option><option value="Huesca">
+            
+            </option><option value="Hull">
+            
+            </option><option value="Huracan">
+            
+            </option><option value="Hvidovre IF">
+            
+            </option><option value="Ibiza">
+            
+            </option><option value="Ilves">
+            
+            </option><option value="Ind. Rivadavia">
+            
+            </option><option value="Independiente">
+            
+            </option><option value="Ingolstadt">
+            
+            </option><option value="Instituto">
+            
+            </option><option value="Inter">
+            
+            </option><option value="Inter Miami">
+            
+            </option><option value="Inter Turku">
+            
+            </option><option value="Internacional">
+            
+            </option><option value="Inverness C">
+            
+            </option><option value="Ionikos">
+            
+            </option><option value="Ipswich">
+            
+            </option><option value="Iraklis">
+            
+            </option><option value="Istanbulspor">
+            
+            </option><option value="Iwata">
+            
+            </option><option value="JJK Jyvaskyla">
+            
+            </option><option value="Jagiellonia">
+            
+            </option><option value="Jaro">
+            
+            </option><option value="Jerv">
+            
+            </option><option value="Jiangsu Suning">
+            
+            </option><option value="Joinville">
+            
+            </option><option value="Jonkopings">
+            
+            </option><option value="Juarez">
+            
+            </option><option value="Juve Stabia">
+            
+            </option><option value="Juventude">
+            
+            </option><option value="Juventus">
+            
+            </option><option value="KFUM Oslo">
+            
+            </option><option value="KPV Kokkola">
+            
+            </option><option value="KTP">
+            
+            </option><option value="Kaiserslautern">
+            
+            </option><option value="Kallonis">
+            
+            </option><option value="Kalmar">
+            
+            </option><option value="Karabukspor">
+            
+            </option><option value="Karagumruk">
+            
+            </option><option value="Karlsruhe">
+            
+            </option><option value="Kashima Antlers">
+            
+            </option><option value="Kashiwa Reysol">
+            
+            </option><option value="Kasimpasa">
+            
+            </option><option value="Kawasaki Frontale">
+            
+            </option><option value="Kayserispor">
+            
+            </option><option value="Kelty Hearts">
+            
+            </option><option value="Kerkyra">
+            
+            </option><option value="Khimki">
+            
+            </option><option value="Kidderminster">
+            
+            </option><option value="Kifisia">
+            
+            </option><option value="Kilmarnock">
+            
+            </option><option value="King�s Lynn">
+            
+            </option><option value="Kocaelispor">
+            
+            </option><option value="Kofu">
+            
+            </option><option value="Kongsvinger">
+            
+            </option><option value="Konyaspor">
+            
+            </option><option value="Korona Kielce">
+            
+            </option><option value="Kortrijk">
+            
+            </option><option value="Krasnodar">
+            
+            </option><option value="Kristiansund">
+            
+            </option><option value="Krylya Sovetov">
+            
+            </option><option value="KuPS">
+            
+            </option><option value="Kuban">
+            
+            </option><option value="Kumamoto">
+            
+            </option><option value="Kyoto">
+            
+            </option><option value="LASK">
+            
+            </option><option value="LKS Lodz">
+            
+            </option><option value="La Coruna">
+            
+            </option><option value="Lahti">
+            
+            </option><option value="Lamia">
+            
+            </option><option value="Landskrona">
+            
+            </option><option value="Lanus">
+            
+            </option><option value="Larisa">
+            
+            </option><option value="Las Palmas">
+            
+            </option><option value="Latina">
+            
+            </option><option value="Lausanne">
+            
+            </option><option value="Lausanne Ouchy">
+            
+            </option><option value="Laval">
+            
+            </option><option value="Lazio">
+            
+            </option><option value="Le Havre">
+            
+            </option><option value="Le Mans">
+            
+            </option><option value="Lecce">
+            
+            </option><option value="Lecco">
+            
+            </option><option value="Lech Poznan">
+            
+            </option><option value="Lechia Gdansk">
+            
+            </option><option value="Leczna">
+            
+            </option><option value="Leeds">
+            
+            </option><option value="Leganes">
+            
+            </option><option value="Legia">
+            
+            </option><option value="Legnica">
+            
+            </option><option value="Leicester">
+            
+            </option><option value="Lens">
+            
+            </option><option value="Leones Negros">
+            
+            </option><option value="Leonesa">
+            
+            </option><option value="Levadeiakos">
+            
+            </option><option value="Levante">
+            
+            </option><option value="Leverkusen">
+            
+            </option><option value="Leyton Orient">
+            
+            </option><option value="Liaoning">
+            
+            </option><option value="Liaoning Tieren">
+            
+            </option><option value="Lille">
+            
+            </option><option value="Lillestrom">
+            
+            </option><option value="Limerick">
+            
+            </option><option value="Lincoln">
+            
+            </option><option value="Liverpool">
+            
+            </option><option value="Livingston">
+            
+            </option><option value="Livorno">
+            
+            </option><option value="Ljungskile">
+            
+            </option><option value="Llagostera">
+            
+            </option><option value="Lobos BUAP">
+            
+            </option><option value="Logrones">
+            
+            </option><option value="Lokeren">
+            
+            </option><option value="Lokomotiv Moscow">
+            
+            </option><option value="Longford">
+            
+            </option><option value="Lorca">
+            
+            </option><option value="Lorient">
+            
+            </option><option value="Los Angeles FC">
+            
+            </option><option value="Los Angeles Galaxy">
+            
+            </option><option value="Lugano">
+            
+            </option><option value="Lugo">
+            
+            </option><option value="Luton">
+            
+            </option><option value="Luzern">
+            
+            </option><option value="Lyngby">
+            
+            </option><option value="Lyon">
+            
+            </option><option value="M&#39;gladbach">
+            
+            </option><option value="M. Saransk">
+            
+            </option><option value="Macclesfield">
+            
+            </option><option value="Machida">
+            
+            </option><option value="Magdeburg">
+            
+            </option><option value="Maidenhead">
+            
+            </option><option value="Maidstone">
+            
+            </option><option value="Mainz">
+            
+            </option><option value="Malaga">
+            
+            </option><option value="Mallorca">
+            
+            </option><option value="Malmo FF">
+            
+            </option><option value="Man City">
+            
+            </option><option value="Man United">
+            
+            </option><option value="Mansfield">
+            
+            </option><option value="Mantova">
+            
+            </option><option value="Mariehamn">
+            
+            </option><option value="Maritimo">
+            
+            </option><option value="Marseille">
+            
+            </option><option value="Martigues">
+            
+            </option><option value="Mattersburg">
+            
+            </option><option value="Mazatlan FC">
+            
+            </option><option value="Mechelen">
+            
+            </option><option value="Meizhou Hakka">
+            
+            </option><option value="Mersin Idman Yurdu">
+            
+            </option><option value="Mervue">
+            
+            </option><option value="Metaloglobus Bucharest">
+            
+            </option><option value="Metz">
+            
+            </option><option value="Middlesbrough">
+            
+            </option><option value="Midtjylland">
+            
+            </option><option value="Milan">
+            
+            </option><option value="Millwall">
+            
+            </option><option value="Milton Keynes Dons">
+            
+            </option><option value="Minnesota United">
+            
+            </option><option value="Mioveni">
+            
+            </option><option value="Mirandes">
+            
+            </option><option value="Mirassol">
+            
+            </option><option value="Mjallby">
+            
+            </option><option value="Mjondalen">
+            
+            </option><option value="Modena">
+            
+            </option><option value="Molde">
+            
+            </option><option value="Monaco">
+            
+            </option><option value="Monaghan">
+            
+            </option><option value="Monarcas">
+            
+            </option><option value="Montedio Yamagata">
+            
+            </option><option value="Monterrey">
+            
+            </option><option value="Montpellier">
+            
+            </option><option value="Montrose">
+            
+            </option><option value="Monza">
+            
+            </option><option value="Morecambe">
+            
+            </option><option value="Moreirense">
+            
+            </option><option value="Morton">
+            
+            </option><option value="Moss">
+            
+            </option><option value="Motherwell">
+            
+            </option><option value="Motor Lublin">
+            
+            </option><option value="Mouscron">
+            
+            </option><option value="Mouscron-Peruwelz">
+            
+            </option><option value="Munich 1860">
+            
+            </option><option value="MyPa">
+            
+            </option><option value="NAC Breda">
+            
+            </option><option value="Nacional">
+            
+            </option><option value="Nagoya Grampus">
+            
+            </option><option value="Nancy">
+            
+            </option><option value="Nantes">
+            
+            </option><option value="Nantong Zhiyun">
+            
+            </option><option value="Napoli">
+            
+            </option><option value="Nashville SC">
+            
+            </option><option value="Nautico">
+            
+            </option><option value="Navodari">
+            
+            </option><option value="Necaxa">
+            
+            </option><option value="Neustadt">
+            
+            </option><option value="New England Revolution">
+            
+            </option><option value="New York City">
+            
+            </option><option value="New York Red Bulls">
+            
+            </option><option value="Newcastle">
+            
+            </option><option value="Newells Old Boys">
+            
+            </option><option value="Newport County">
+            
+            </option><option value="Nice">
+            
+            </option><option value="Nijmegen">
+            
+            </option><option value="Nimes">
+            
+            </option><option value="Niort">
+            
+            </option><option value="Nordsjaelland">
+            
+            </option><option value="Norrkoping">
+            
+            </option><option value="North Ferriby">
+            
+            </option><option value="Northampton">
+            
+            </option><option value="Norwich">
+            
+            </option><option value="Nott&#39;m Forest">
+            
+            </option><option value="Notts County">
+            
+            </option><option value="Novara">
+            
+            </option><option value="Nueva Chicago">
+            
+            </option><option value="Numancia">
+            
+            </option><option value="Nurnberg">
+            
+            </option><option value="OFI Crete">
+            
+            </option><option value="Odd">
+            
+            </option><option value="Odense">
+            
+            </option><option value="Oita Trinita">
+            
+            </option><option value="Okayama">
+            
+            </option><option value="Oldham">
+            
+            </option><option value="Olimpo Bahia Blanca">
+            
+            </option><option value="Olympiakos">
+            
+            </option><option value="Omiya Ardija">
+            
+            </option><option value="Oostende">
+            
+            </option><option value="Orebro">
+            
+            </option><option value="Orenburg">
+            
+            </option><option value="Orlando City">
+            
+            </option><option value="Orleans">
+            
+            </option><option value="Osasuna">
+            
+            </option><option value="Osmanlispor">
+            
+            </option><option value="Osnabruck">
+            
+            </option><option value="Oster">
+            
+            </option><option value="Osters">
+            
+            </option><option value="Ostersunds">
+            
+            </option><option value="Otelul">
+            
+            </option><option value="Oud-Heverlee Leuven">
+            
+            </option><option value="Oviedo">
+            
+            </option><option value="Oxford">
+            
+            </option><option value="Oxford City">
+            
+            </option><option value="PAOK">
+            
+            </option><option value="PK-35 Vantaa">
+            
+            </option><option value="PS Kemi">
+            
+            </option><option value="PSV Eindhoven">
+            
+            </option><option value="Pachuca">
+            
+            </option><option value="Pacos Ferreira">
+            
+            </option><option value="Paderborn">
+            
+            </option><option value="Padova">
+            
+            </option><option value="Palermo">
+            
+            </option><option value="Palmeiras">
+            
+            </option><option value="Panathinaikos">
+            
+            </option><option value="Pandurii">
+            
+            </option><option value="Panetolikos">
+            
+            </option><option value="Panionios">
+            
+            </option><option value="Panserraikos">
+            
+            </option><option value="Panthrakikos">
+            
+            </option><option value="Parana">
+            
+            </option><option value="Pari NN">
+            
+            </option><option value="Paris FC">
+            
+            </option><option value="Paris SG">
+            
+            </option><option value="Parma">
+            
+            </option><option value="Partick">
+            
+            </option><option value="Patronato">
+            
+            </option><option value="Pau FC">
+            
+            </option><option value="Pendikspor">
+            
+            </option><option value="Perugia">
+            
+            </option><option value="Pescara">
+            
+            </option><option value="Peterboro">
+            
+            </option><option value="Peterhead">
+            
+            </option><option value="Petrolul">
+            
+            </option><option value="Philadelphia Union">
+            
+            </option><option value="Piast Gliwice">
+            
+            </option><option value="Pisa">
+            
+            </option><option value="Platanias">
+            
+            </option><option value="Platense">
+            
+            </option><option value="Plymouth">
+            
+            </option><option value="Podbeskidzie">
+            
+            </option><option value="Pogon Szczecin">
+            
+            </option><option value="Poli Iasi">
+            
+            </option><option value="Poli Timisoara">
+            
+            </option><option value="Polonia Warszawa">
+            
+            </option><option value="Ponferradina">
+            
+            </option><option value="Ponte Preta">
+            
+            </option><option value="Pordenone">
+            
+            </option><option value="Port Vale">
+            
+            </option><option value="Portimonense">
+            
+            </option><option value="Portland Timbers">
+            
+            </option><option value="Porto">
+            
+            </option><option value="Portsmouth">
+            
+            </option><option value="Portuguesa">
+            
+            </option><option value="Preston">
+            
+            </option><option value="Preußen Münster">
+            
+            </option><option value="Pro Vercelli">
+            
+            </option><option value="Puebla">
+            
+            </option><option value="Puszcza">
+            
+            </option><option value="QPR">
+            
+            </option><option value="Qingdao FC">
+            
+            </option><option value="Qingdao Hainiu">
+            
+            </option><option value="Qingdao West Coast">
+            
+            </option><option value="Queen of Sth">
+            
+            </option><option value="Queens Park">
+            
+            </option><option value="Queretaro">
+            
+            </option><option value="Quevilly Rouen">
+            
+            </option><option value="Quilmes">
+            
+            </option><option value="R. Volgograd">
+            
+            </option><option value="RAAL La Louviere">
+            
+            </option><option value="RB Leipzig">
+            
+            </option><option value="RWD Molenbeek">
+            
+            </option><option value="Racing Club">
+            
+            </option><option value="Radomiak Radom">
+            
+            </option><option value="Raith Rvs">
+            
+            </option><option value="Rakow">
+            
+            </option><option value="Randers FC">
+            
+            </option><option value="Rangers">
+            
+            </option><option value="Ranheim">
+            
+            </option><option value="Rayo Majadahonda">
+            
+            </option><option value="Reading">
+            
+            </option><option value="Real Madrid">
+            
+            </option><option value="Real Salt Lake">
+            
+            </option><option value="Red Star">
+            
+            </option><option value="Regensburg">
+            
+            </option><option value="Reggiana">
+            
+            </option><option value="Reggina">
+            
+            </option><option value="Reims">
+            
+            </option><option value="Remo">
+            
+            </option><option value="Rennes">
+            
+            </option><option value="Reus Deportiu">
+            
+            </option><option value="Ried">
+            
+            </option><option value="Rio Ave">
+            
+            </option><option value="River Plate">
+            
+            </option><option value="Rizespor">
+            
+            </option><option value="Rochdale">
+            
+            </option><option value="Roda">
+            
+            </option><option value="Rodez">
+            
+            </option><option value="Rodina Moscow">
+            
+            </option><option value="Roma">
+            
+            </option><option value="Rosario Central">
+            
+            </option><option value="Rosenborg">
+            
+            </option><option value="Ross County">
+            
+            </option><option value="Rotherham">
+            
+            </option><option value="Rovaniemi">
+            
+            </option><option value="Rubin Kazan">
+            
+            </option><option value="Ruch">
+            
+            </option><option value="Ruch Chorzow">
+            
+            </option><option value="SJK">
+            
+            </option><option value="SK Rapid">
+            
+            </option><option value="SKA Khabarovsk">
+            
+            </option><option value="Sabadell">
+            
+            </option><option value="Sagan Tosu">
+            
+            </option><option value="Salernitana">
+            
+            </option><option value="Salford">
+            
+            </option><option value="Salzburg">
+            
+            </option><option value="Sampdoria">
+            
+            </option><option value="Samsunspor">
+            
+            </option><option value="San Diego FC">
+            
+            </option><option value="San Jose Earthquakes">
+            
+            </option><option value="San Lorenzo">
+            
+            </option><option value="San Martin S.J.">
+            
+            </option><option value="San Martin T.">
+            
+            </option><option value="Sandecja Nowy S.">
+            
+            </option><option value="Sandefjord">
+            
+            </option><option value="Sandhausen">
+            
+            </option><option value="Sandnes">
+            
+            </option><option value="Sanfrecce Hiroshima">
+            
+            </option><option value="Santa Clara">
+            
+            </option><option value="Santa Cruz">
+            
+            </option><option value="Santander">
+            
+            </option><option value="Santos">
+            
+            </option><option value="Santos Laguna">
+            
+            </option><option value="Sao Paulo">
+            
+            </option><option value="Sarmiento Junin">
+            
+            </option><option value="Sarpsborg 08">
+            
+            </option><option value="Sassuolo">
+            
+            </option><option value="Schaffhausen">
+            
+            </option><option value="Schalke 04">
+            
+            </option><option value="Scunthorpe">
+            
+            </option><option value="Seattle Sounders">
+            
+            </option><option value="Sepsi Sf. Gheorghe">
+            
+            </option><option value="Seraing">
+            
+            </option><option value="Servette">
+            
+            </option><option value="Setubal">
+            
+            </option><option value="Sevilla">
+            
+            </option><option value="Sevilla B">
+            
+            </option><option value="Shamrock Rovers">
+            
+            </option><option value="Shandong Luneng">
+            
+            </option><option value="Shandong Taishan">
+            
+            </option><option value="Shanghai Port">
+            
+            </option><option value="Shanghai SIPG">
+            
+            </option><option value="Shanghai Shenhua">
+            
+            </option><option value="Shanghai Shenxin">
+            
+            </option><option value="Sheffield United">
+            
+            </option><option value="Sheffield Weds">
+            
+            </option><option value="Shelbourne">
+            
+            </option><option value="Shenzhen">
+            
+            </option><option value="Shenzhen Xinpengcheng">
+            
+            </option><option value="Shijiazhuang">
+            
+            </option><option value="Shimizu S-Pulse">
+            
+            </option><option value="Shonan Bellmare">
+            
+            </option><option value="Shrewsbury">
+            
+            </option><option value="Silkeborg">
+            
+            </option><option value="Sion">
+            
+            </option><option value="Sirius">
+            
+            </option><option value="Sivasspor">
+            
+            </option><option value="Slask Wroclaw">
+            
+            </option><option value="Sligo Rovers">
+            
+            </option><option value="Sochaux">
+            
+            </option><option value="Sochi">
+            
+            </option><option value="Sociedad">
+            
+            </option><option value="Sociedad B">
+            
+            </option><option value="Sogndal">
+            
+            </option><option value="Solihull">
+            
+            </option><option value="Sonderjyske">
+            
+            </option><option value="Southampton">
+            
+            </option><option value="Southend">
+            
+            </option><option value="Southport">
+            
+            </option><option value="Sp Braga">
+            
+            </option><option value="Sp Gijon">
+            
+            </option><option value="Sp Lisbon">
+            
+            </option><option value="Spal">
+            
+            </option><option value="Sparta Rotterdam">
+            
+            </option><option value="Spartak Moscow">
+            
+            </option><option value="Spartak Nalchik">
+            
+            </option><option value="Spartans">
+            
+            </option><option value="Spezia">
+            
+            </option><option value="Sport Recife">
+            
+            </option><option value="Sporting Kansas City">
+            
+            </option><option value="St Etienne">
+            
+            </option><option value="St Johnstone">
+            
+            </option><option value="St Mirren">
+            
+            </option><option value="St Pauli">
+            
+            </option><option value="St Truiden">
+            
+            </option><option value="St. Gallen">
+            
+            </option><option value="St. Gilloise">
+            
+            </option><option value="St. Louis City">
+            
+            </option><option value="St. Patricks">
+            
+            </option><option value="St. Polten">
+            
+            </option><option value="Stabaek">
+            
+            </option><option value="Stal Mielec">
+            
+            </option><option value="Standard">
+            
+            </option><option value="Start">
+            
+            </option><option value="Stenhousemuir">
+            
+            </option><option value="Stevenage">
+            
+            </option><option value="Stirling">
+            
+            </option><option value="Stockport">
+            
+            </option><option value="Stoke">
+            
+            </option><option value="Stranraer">
+            
+            </option><option value="Strasbourg">
+            
+            </option><option value="Stromsgodset">
+            
+            </option><option value="Sturm Graz">
+            
+            </option><option value="Stuttgart">
+            
+            </option><option value="Sudtirol">
+            
+            </option><option value="Sunderland">
+            
+            </option><option value="Sundsvall">
+            
+            </option><option value="Sutton">
+            
+            </option><option value="Swansea">
+            
+            </option><option value="Swindon">
+            
+            </option><option value="Syrianska">
+            
+            </option><option value="T. Moscow">
+            
+            </option><option value="TPS">
+            
+            </option><option value="Talleres Cordoba">
+            
+            </option><option value="Tambov">
+            
+            </option><option value="Tamworth">
+            
+            </option><option value="Targu Mures">
+            
+            </option><option value="Telstar">
+            
+            </option><option value="Temperley">
+            
+            </option><option value="Tenerife">
+            
+            </option><option value="Termalica B-B.">
+            
+            </option><option value="Ternana">
+            
+            </option><option value="Thun">
+            
+            </option><option value="Tianjin Jinmen Tiger">
+            
+            </option><option value="Tianjin Quanjian">
+            
+            </option><option value="Tianjin Tianhai">
+            
+            </option><option value="Tigre">
+            
+            </option><option value="Tigres UANL">
+            
+            </option><option value="Tirol">
+            
+            </option><option value="Tokushima">
+            
+            </option><option value="Toluca">
+            
+            </option><option value="Tomsk">
+            
+            </option><option value="Tondela">
+            
+            </option><option value="Torino">
+            
+            </option><option value="Toronto FC">
+            
+            </option><option value="Torpedo Moscow">
+            
+            </option><option value="Torquay">
+            
+            </option><option value="Tosno">
+            
+            </option><option value="Tottenham">
+            
+            </option><option value="Toulouse">
+            
+            </option><option value="Tours">
+            
+            </option><option value="Trabzonspor">
+            
+            </option><option value="Tranmere">
+            
+            </option><option value="Trapani">
+            
+            </option><option value="Treaty United">
+            
+            </option><option value="Trelleborgs">
+            
+            </option><option value="Tromso">
+            
+            </option><option value="Troyes">
+            
+            </option><option value="Truro">
+            
+            </option><option value="Twente">
+            
+            </option><option value="U Craiova">
+            
+            </option><option value="U Craiova 1948">
+            
+            </option><option value="U. Cluj">
+            
+            </option><option value="UC Dublin">
+            
+            </option><option value="UCAM Murcia">
+            
+            </option><option value="UNAM Pumas">
+            
+            </option><option value="UTA Arad">
+            
+            </option><option value="Udinese">
+            
+            </option><option value="Ufa">
+            
+            </option><option value="Ull/Kisa">
+            
+            </option><option value="Ulm">
+            
+            </option><option value="Umraniyespor">
+            
+            </option><option value="Uniao Madeira">
+            
+            </option><option value="Union Berlin">
+            
+            </option><option value="Union de Santa Fe">
+            
+            </option><option value="Unirea Slobozia">
+            
+            </option><option value="Univ. Craiova">
+            
+            </option><option value="Ural">
+            
+            </option><option value="Urawa Reds">
+            
+            </option><option value="Utrecht">
+            
+            </option><option value="V-Varen Nagasaki">
+            
+            </option><option value="VPS">
+            
+            </option><option value="VVV Venlo">
+            
+            </option><option value="Vaduz">
+            
+            </option><option value="Valencia">
+            
+            </option><option value="Valenciennes">
+            
+            </option><option value="Valerenga">
+            
+            </option><option value="Valladolid">
+            
+            </option><option value="Vallecano">
+            
+            </option><option value="Vancouver Whitecaps">
+            
+            </option><option value="Varberg">
+            
+            </option><option value="Varnamo">
+            
+            </option><option value="Vasco">
+            
+            </option><option value="Vaslui">
+            
+            </option><option value="Vasteras SK">
+            
+            </option><option value="Vegalta Sendai">
+            
+            </option><option value="Vejle">
+            
+            </option><option value="Velez Sarsfield">
+            
+            </option><option value="Vendsyssel">
+            
+            </option><option value="Venezia">
+            
+            </option><option value="Veracruz">
+            
+            </option><option value="Verdy">
+            
+            </option><option value="Veria">
+            
+            </option><option value="Verona">
+            
+            </option><option value="Vestsjaelland">
+            
+            </option><option value="Viborg">
+            
+            </option><option value="Vicenza">
+            
+            </option><option value="Viitorul Constanta">
+            
+            </option><option value="Viking">
+            
+            </option><option value="Villarreal">
+            
+            </option><option value="Villarreal B">
+            
+            </option><option value="Virtus Entella">
+            
+            </option><option value="Virtus Lanciano">
+            
+            </option><option value="Vissel Kobe">
+            
+            </option><option value="Vitesse">
+            
+            </option><option value="Vitoria">
+            
+            </option><option value="Vizela">
+            
+            </option><option value="Vladikavkaz">
+            
+            </option><option value="Volendam">
+            
+            </option><option value="Volga N. Novgorod">
+            
+            </option><option value="Volgar-Astrakhan">
+            
+            </option><option value="Volos NFC">
+            
+            </option><option value="Waalwijk">
+            
+            </option><option value="Waasland-Beveren">
+            
+            </option><option value="Wacker Innsbruck">
+            
+            </option><option value="Walsall">
+            
+            </option><option value="Waregem">
+            
+            </option><option value="Warta Poznan">
+            
+            </option><option value="Waterford">
+            
+            </option><option value="Watford">
+            
+            </option><option value="Wealdstone">
+            
+            </option><option value="Wehen">
+            
+            </option><option value="Welling United">
+            
+            </option><option value="Werder Bremen">
+            
+            </option><option value="West Brom">
+            
+            </option><option value="West Ham">
+            
+            </option><option value="Westerlo">
+            
+            </option><option value="Wexford">
+            
+            </option><option value="Weymouth">
+            
+            </option><option value="Widzew Lodz">
+            
+            </option><option value="Wigan">
+            
+            </option><option value="Willem II">
+            
+            </option><option value="Winterthur">
+            
+            </option><option value="Wisla">
+            
+            </option><option value="Wisla Plock">
+            
+            </option><option value="Woking">
+            
+            </option><option value="Wolfsberger AC">
+            
+            </option><option value="Wolfsburg">
+            
+            </option><option value="Wolves">
+            
+            </option><option value="Wrexham">
+            
+            </option><option value="Wuhan FC">
+            
+            </option><option value="Wuhan Three Towns">
+            
+            </option><option value="Wurzburger Kickers">
+            
+            </option><option value="Wycombe">
+            
+            </option><option value="Xamax">
+            
+            </option><option value="Xanthi">
+            
+            </option><option value="Yamaga">
+            
+            </option><option value="Yanbian">
+            
+            </option><option value="Yeni Malatyaspor">
+            
+            </option><option value="Yenisey">
+            
+            </option><option value="Yeovil">
+            
+            </option><option value="Yokohama F. Marinos">
+            
+            </option><option value="Yokohama FC">
+            
+            </option><option value="York">
+            
+            </option><option value="Young Boys">
+            
+            </option><option value="Yunnan Yukun">
+            
+            </option><option value="Yverdon">
+            
+            </option><option value="Zaglebie">
+            
+            </option><option value="Zaglebie Sosnowiec">
+            
+            </option><option value="Zaragoza">
+            
+            </option><option value="Zawisza">
+            
+            </option><option value="Zenit">
+            
+            </option><option value="Zhejiang Greentown">
+            
+            </option><option value="Zhejiang Professional">
+            
+            </option><option value="Zhejiang Yiteng">
+            
+            </option><option value="Zurich">
+            
+            </option><option value="Zwolle">
+            
+        </option></datalist>
+
+        <div style="text-align: center; margin-top: 24px;">
+            <button class="btn btn-primary" onclick="runPrediction()" style="padding: 12px 32px; font-size: 1.1rem; width: 200px;">
+                Analiz Et 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- Sonuçlar Paneli (Gizli Başlar) -->
+    <div id="prediction-results" style="display: block; margin-top: 32px;">
+        <h2 style="margin-bottom: 24px; text-align: center;" id="pred-match-title">Besiktas vs Kasimpasa</h2>
+        
+        <!-- Win Probabilities -->
+        <div class="grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 24px;">
+            <div class="card stat-card shadow" style="text-align: center; border-bottom: 4px solid var(--primary);">
+                <div class="stat-title">Ev Sahibi (%1)</div>
+                <div class="stat-value" id="prob-1" style="color: var(--primary);">62</div>
+            </div>
+            <div class="card stat-card shadow" style="text-align: center; border-bottom: 4px solid #94a3b8;">
+                <div class="stat-title">Beraberlik (X)</div>
+                <div class="stat-value" id="prob-x" style="color: #94a3b8;">19</div>
+            </div>
+            <div class="card stat-card shadow" style="text-align: center; border-bottom: 4px solid var(--danger);">
+                <div class="stat-title">Deplasman (%2)</div>
+                <div class="stat-value" id="prob-2" style="color: var(--danger);">18</div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- Ana Dağılım Grafiği -->
+            <div class="card glass-card">
+                <h3>Kazanma Olasılığı</h3>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="winProbChart" width="1493" height="312" style="display: block; box-sizing: border-box; height: 250px; width: 1194px;"></canvas>
+                </div>
+            </div>
+
+            <!-- Beklenen Goller -->
+            <div class="card glass-card" style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                <h3>Beklenen Gol (xG)</h3>
+                <div style="display: flex; align-items: center; justify-content: space-around; width: 100%; margin-top: 2rem;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 3rem; font-weight: 800; color: var(--primary);" id="xg-home">2.28</div>
+                        <div style="color: var(--text-muted);">Ev Sahibi</div>
+                    </div>
+                    <div style="font-size: 2rem; color: #475569;">-</div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 3rem; font-weight: 800; color: var(--danger);" id="xg-away">1.13</div>
+                        <div style="color: var(--text-muted);">Deplasman</div>
+                    </div>
+                </div>
+                <div style="margin-top: 2rem; text-align: center;">
+                    <div style="font-size: 1.2rem; color: var(--text-muted);">En Olası Skor</div>
+                    <div style="font-size: 2.5rem; font-weight: 800; color: var(--success);" id="most-likely-score">2-1</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid" style="margin-top: 24px;">
+            <!-- Olası Skorlar Tablosu -->
+            <div class="card glass-card">
+                <h3>En Muhtemel 5 Skor</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Skor Tahmini</th>
+                            <th style="text-align: right;">Matematiksel Olasılık</th>
+                        </tr>
+                    </thead>
+                    <tbody id="top-scores-body">
+        <tr>
+            <td><strong style="font-size:1.2rem;">2-1</strong></td>
+            <td style="text-align: right;">
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+                    <div style="background: rgba(255,255,255,0.1); width: 100px; height: 8px; border-radius: 4px; overflow: hidden;">
+                        <div style="width: 9.7%; background: var(--success); height: 100%;"></div>
+                    </div>
+                    <span style="font-weight: 600;">%9.7</span>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td><strong style="font-size:1.2rem;">2-0</strong></td>
+            <td style="text-align: right;">
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+                    <div style="background: rgba(255,255,255,0.1); width: 100px; height: 8px; border-radius: 4px; overflow: hidden;">
+                        <div style="width: 8.55%; background: var(--primary); height: 100%;"></div>
+                    </div>
+                    <span style="font-weight: 600;">%8.55</span>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td><strong style="font-size:1.2rem;">1-1</strong></td>
+            <td style="text-align: right;">
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+                    <div style="background: rgba(255,255,255,0.1); width: 100px; height: 8px; border-radius: 4px; overflow: hidden;">
+                        <div style="width: 8.51%; background: var(--primary); height: 100%;"></div>
+                    </div>
+                    <span style="font-weight: 600;">%8.51</span>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td><strong style="font-size:1.2rem;">1-0</strong></td>
+            <td style="text-align: right;">
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+                    <div style="background: rgba(255,255,255,0.1); width: 100px; height: 8px; border-radius: 4px; overflow: hidden;">
+                        <div style="width: 7.51%; background: var(--primary); height: 100%;"></div>
+                    </div>
+                    <span style="font-weight: 600;">%7.51</span>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td><strong style="font-size:1.2rem;">3-1</strong></td>
+            <td style="text-align: right;">
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+                    <div style="background: rgba(255,255,255,0.1); width: 100px; height: 8px; border-radius: 4px; overflow: hidden;">
+                        <div style="width: 7.37%; background: var(--primary); height: 100%;"></div>
+                    </div>
+                    <span style="font-weight: 600;">%7.37</span>
+                </div>
+            </td>
+        </tr></tbody>
+                </table>
+            </div>
+
+            <!-- Gol Piyasası -->
+            <div class="card glass-card">
+                <h3>Gol İhtimalleri (Alt/Üst &amp; KG)</h3>
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+                    <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; text-align: center;">
+                        <div style="color: var(--text-muted); font-size: 0.9rem;">2.5 ÜST</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; margin-top: 8px; color: var(--success);" id="prob-over">%63.3</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; text-align: center;">
+                        <div style="color: var(--text-muted); font-size: 0.9rem;">2.5 ALT</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; margin-top: 8px; color: var(--warning);" id="prob-under">%33.7</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; text-align: center;">
+                        <div style="color: var(--text-muted); font-size: 0.9rem;">Karşılıklı Gol Var</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; margin-top: 8px; color: var(--success);" id="prob-btts-yes">%58.8</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; text-align: center;">
+                        <div style="color: var(--text-muted); font-size: 0.9rem;">Karşılıklı Gol Yok</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; margin-top: 8px; color: var(--danger);" id="prob-btts-no">%41.2</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.predictor-selector {
+    padding: 32px;
+    background: linear-gradient(135deg, rgba(30,41,59,0.7) 0%, rgba(15,23,42,0.9) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+.vs-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+}
+.team-select-wrapper {
+    flex: 1;
+    max-width: 400px;
+}
+.team-select-wrapper label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.team-select-wrapper input {
+    width: 100%;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+    font-size: 1.1rem;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+.team-select-wrapper input:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+.vs-badge {
+    background: var(--surface);
+    color: white;
+    font-weight: 800;
+    font-size: 1.2rem;
+    padding: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+</style>
+
+        </div>
+    </main>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Ana JS -->
+    <script src="./Tahmin Motoru (Predictor) - Football Data_files/main.js.indir"></script>
+    
+<script>
+async function runPrediction() {
+    const home = document.getElementById('home-team-input').value.trim();
+    const away = document.getElementById('away-team-input').value.trim();
+
+    if (!home || !away) {
+        showToast('Lütfen her iki takımı da seçin.', 'warning');
+        return;
+    }
+
+    if (home === away) {
+        showToast('Farklı takımlar seçmelisiniz.', 'warning');
+        return;
+    }
+
+    showToast('Tahmin hesaplanıyor...', 'success');
+    
+    // API çağrısı
+    const data = await api(`/api/predict/${encodeURIComponent(home)}/${encodeURIComponent(away)}`);
+    if (!data) return; // Hata durumunda (showToast zaten api fonskiyonunda çıkıyor)
+
+    // Arayüzü göster
+    document.getElementById('prediction-results').style.display = 'block';
+    document.getElementById('pred-match-title').textContent = `${data.teams.home} vs ${data.teams.away}`;
+
+    // Yüzdeler
+    animateNumber('prob-1', data.win_probabilities.home_win + '%');
+    animateNumber('prob-x', data.win_probabilities.draw + '%');
+    animateNumber('prob-2', data.win_probabilities.away_win + '%');
+
+    // xG
+    document.getElementById('xg-home').textContent = data.expected_goals.home.toFixed(2);
+    document.getElementById('xg-away').textContent = data.expected_goals.away.toFixed(2);
+    document.getElementById('most-likely-score').textContent = data.most_likely_score;
+
+    // Gol Piyasası
+    document.getElementById('prob-over').textContent = `%${data.goals_market.over_25}`;
+    document.getElementById('prob-under').textContent = `%${data.goals_market.under_25}`;
+    document.getElementById('prob-btts-yes').textContent = `%${data.goals_market.btts_yes}`;
+    document.getElementById('prob-btts-no').textContent = `%${data.goals_market.btts_no}`;
+
+    // Olası Skorlar Tablosu
+    const scoresHtml = data.top_scores.map((score, index) => {
+        let barColor = index === 0 ? 'var(--success)' : 'var(--primary)';
+        return `
+        <tr>
+            <td><strong style="font-size:1.2rem;">${score.score}</strong></td>
+            <td style="text-align: right;">
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+                    <div style="background: rgba(255,255,255,0.1); width: 100px; height: 8px; border-radius: 4px; overflow: hidden;">
+                        <div style="width: ${score.prob}%; background: ${barColor}; height: 100%;"></div>
+                    </div>
+                    <span style="font-weight: 600;">%${score.prob}</span>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+    document.getElementById('top-scores-body').innerHTML = scoresHtml;
+
+    // Doughnut Grafiği (Kazanma Olasılığı)
+    createDoughnutChart('winProbChart', {
+        labels: ['Ev Sahibi (%1)', 'Beraberlik (X)', 'Deplasman (%2)'],
+        data: [data.win_probabilities.home_win, data.win_probabilities.draw, data.win_probabilities.away_win],
+        colors: ['#3b82f6', '#94a3b8', '#ef4444']
+    });
+    
+    // Aşağıya kaydır
+    document.getElementById('prediction-results').scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+
+
+</body></html>

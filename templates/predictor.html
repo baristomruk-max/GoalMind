@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Tahmin Motoru (Predictor) - Football Data{% endblock %}
+
+{% block content %}
+<div class="predictor-container">
+    <div class="page-header">
+        <h1>🔮 Maç Tahmin Motoru <span class="badge" style="background:var(--primary); color:white; font-size:12px; padding:4px 8px; border-radius:12px;">BETA</span></h1>
+        <p>Poisson Dağılımı ve istatistiksel modeller kullanılarak hesaplanmış maç tahmin simülasyonu.</p>
+    </div>
+
+    <!-- Takım Seçim Kartı -->
+    <div class="card glass-card predictor-selector">
+        <div class="vs-container">
+            <div class="team-select-wrapper">
+                <label>Ev Sahibi Takım</label>
+                <input type="text" id="home-team-input" placeholder="Takım yazın..." list="team-datalist" autocomplete="off">
+            </div>
+            
+            <div class="vs-badge">VS</div>
+            
+            <div class="team-select-wrapper">
+                <label>Deplasman Takım</label>
+                <input type="text" id="away-team-input" placeholder="Takım yazın..." list="team-datalist" autocomplete="off">
+            </div>
+        </div>
+        
+        <datalist id="team-datalist">
+            {% for team in teams %}
+            <option value="{{ team }}">
+            {% endfor %}
+        </datalist>
+
+        <div style="text-align: center; margin-top: 24px;">
+            <button class="btn btn-primary" onclick="runPrediction()" style="padding: 12px 32px; font-size: 1.1rem; width: 200px;">
+                Analiz Et 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- Sonuçlar Paneli (Gizli Başlar) -->
+    <div id="prediction-results" style="display: none; margin-top: 32px;">
+        <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 24px;">
+            <h2 style="margin: 0;" id="pred-match-title">Galatasaray vs Fenerbahçe</h2>
+            <div id="ml-badge" class="badge" style="display:none; background: linear-gradient(135deg, #8b5cf6, #3b82f6); color:white; font-size:12px; padding:6px 12px; border-radius:12px; box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);">🤖 AI Powered (XGBoost)</div>
+        </div>
+        
+        <!-- Win Probabilities -->
+        <div class="grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 24px;">
+            <div class="card stat-card shadow" style="text-align: center; border-bottom: 4px solid var(--primary);">
+                <div class="stat-title">Ev Sahibi (%1)</div>
+                <div class="stat-value" id="prob-1" style="color: var(--primary);">--</div>
+            </div>
+            <div class="card stat-card shadow" style="text-align: center; border-bottom: 4px solid #94a3b8;">
+                <div class="stat-title">Beraberlik (X)</div>
+                <div class="stat-value" id="prob-x" style="color: #94a3b8;">--</div>
+            </div>
+            <div class="card stat-card shadow" style="text-align: center; border-bottom: 4px solid var(--danger);">
+                <div class="stat-title">Deplasman (%2)</div>
+                <div class="stat-value" id="prob-2" style="color: var(--danger);">--</div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- Ana Dağılım Grafiği -->
+            <div class="card glass-card">
+                <h3>Kazanma Olasılığı</h3>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="winProbChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Beklenen Goller -->
+            <div class="card glass-card" style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                <h3>Beklenen Gol (xG)</h3>
+                <div style="display: flex; align-items: center; justify-content: space-around; width: 100%; margin-top: 2rem;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 3rem; font-weight: 800; color: var(--primary);" id="xg-home">--</div>
+                        <div style="color: var(--text-muted);">Ev Sahibi</div>
+                    </div>
+                    <div style="font-size: 2rem; color: #475569;">-</div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 3rem; font-weight: 800; color: var(--danger);" id="xg-away">--</div>
+                        <div style="color: var(--text-muted);">Deplasman</div>
+                    </div>
+                </div>
+                <div style="margin-top: 2rem; text-align: center;">
+                    <div style="font-size: 1.2rem; color: var(--text-muted);">En Olası Skor</div>
+                    <div style="font-size: 2.5rem; font-weight: 800; color: var(--success);" id="most-likely-score">--</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid" style="margin-top: 24px;">
+            <!-- Olası Skorlar Tablosu -->
+            <div class="card glass-card">
+                <h3>En Muhtemel 5 Skor</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Skor Tahmini</th>
+                            <th style="text-align: right;">Matematiksel Olasılık</th>
+                        </tr>
+                    </thead>
+                    <tbody id="top-scores-body">
+                        <!-- Doldurulacak -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Gol Piyasası -->
+            <div class="card glass-card">
+                <h3>Gol İhtimalleri (Alt/Üst & KG)</h3>
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+                    <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; text-align: center;">
+                        <div style="color: var(--text-muted); font-size: 0.9rem;">2.5 ÜST</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; margin-top: 8px; color: var(--success);" id="prob-over">--</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; text-align: center;">
+                        <div style="color: var(--text-muted); font-size: 0.9rem;">2.5 ALT</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; margin-top: 8px; color: var(--warning);" id="prob-under">--</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; text-align: center;">
+                        <div style="color: var(--text-muted); font-size: 0.9rem;">Karşılıklı Gol Var</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; margin-top: 8px; color: var(--success);" id="prob-btts-yes">--</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; text-align: center;">
+                        <div style="color: var(--text-muted); font-size: 0.9rem;">Karşılıklı Gol Yok</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; margin-top: 8px; color: var(--danger);" id="prob-btts-no">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.predictor-selector {
+    padding: 32px;
+    background: linear-gradient(135deg, rgba(30,41,59,0.7) 0%, rgba(15,23,42,0.9) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+.vs-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+}
+.team-select-wrapper {
+    flex: 1;
+    max-width: 400px;
+}
+.team-select-wrapper label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.team-select-wrapper input {
+    width: 100%;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+    font-size: 1.1rem;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+.team-select-wrapper input:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+.vs-badge {
+    background: var(--surface);
+    color: white;
+    font-weight: 800;
+    font-size: 1.2rem;
+    padding: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function runPrediction() {
+    const home = document.getElementById('home-team-input').value.trim();
+    const away = document.getElementById('away-team-input').value.trim();
+
+    if (!home || !away) {
+        showToast('Lütfen her iki takımı da seçin.', 'warning');
+        return;
+    }
+
+    if (home === away) {
+        showToast('Farklı takımlar seçmelisiniz.', 'warning');
+        return;
+    }
+
+    showToast('Tahmin hesaplanıyor...', 'success');
+    
+    // API çağrısı
+    const data = await api(`/api/predict/${encodeURIComponent(home)}/${encodeURIComponent(away)}`);
+    if (!data) return; // Hata durumunda (showToast zaten api fonskiyonunda çıkıyor)
+
+    // Arayüzü göster
+    document.getElementById('prediction-results').style.display = 'block';
+    document.getElementById('pred-match-title').textContent = `${data.teams.home} vs ${data.teams.away}`;
+
+    // ML Badge Control
+    if (data.ml_active) {
+        document.getElementById('ml-badge').style.display = 'inline-block';
+    } else {
+        document.getElementById('ml-badge').style.display = 'none';
+        if (data.ml_error) {
+            console.warn("ML Model is inactive:", data.ml_error);
+        }
+    }
+
+    // Yüzdeler
+    animateNumber('prob-1', data.win_probabilities.home_win + '%');
+    animateNumber('prob-x', data.win_probabilities.draw + '%');
+    animateNumber('prob-2', data.win_probabilities.away_win + '%');
+
+    // xG
+    document.getElementById('xg-home').textContent = data.expected_goals.home.toFixed(2);
+    document.getElementById('xg-away').textContent = data.expected_goals.away.toFixed(2);
+    document.getElementById('most-likely-score').textContent = data.most_likely_score;
+
+    // Gol Piyasası
+    document.getElementById('prob-over').textContent = `%${data.goals_market.over_25}`;
+    document.getElementById('prob-under').textContent = `%${data.goals_market.under_25}`;
+    document.getElementById('prob-btts-yes').textContent = `%${data.goals_market.btts_yes}`;
+    document.getElementById('prob-btts-no').textContent = `%${data.goals_market.btts_no}`;
+
+    // Olası Skorlar Tablosu
+    const scoresHtml = data.top_scores.map((score, index) => {
+        let barColor = index === 0 ? 'var(--success)' : 'var(--primary)';
+        return `
+        <tr>
+            <td><strong style="font-size:1.2rem;">${score.score}</strong></td>
+            <td style="text-align: right;">
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+                    <div style="background: rgba(255,255,255,0.1); width: 100px; height: 8px; border-radius: 4px; overflow: hidden;">
+                        <div style="width: ${score.prob}%; background: ${barColor}; height: 100%;"></div>
+                    </div>
+                    <span style="font-weight: 600;">%${score.prob}</span>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+    document.getElementById('top-scores-body').innerHTML = scoresHtml;
+
+    // Doughnut Grafiği (Kazanma Olasılığı)
+    createDoughnutChart('winProbChart', {
+        labels: ['Ev Sahibi (%1)', 'Beraberlik (X)', 'Deplasman (%2)'],
+        data: [data.win_probabilities.home_win, data.win_probabilities.draw, data.win_probabilities.away_win],
+        colors: ['#3b82f6', '#94a3b8', '#ef4444']
+    });
+    
+    // Aşağıya kaydır
+    document.getElementById('prediction-results').scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+{% endblock %}

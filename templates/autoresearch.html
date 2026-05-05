@@ -1,0 +1,534 @@
+{% extends "base.html" %}
+{% block title %}AutoResearch — AI Lab | FootballData{% endblock %}
+
+{% block content %}
+<style>
+/* ─── AutoResearch Panel Stilleri ─── */
+.ar-hero {
+    background: linear-gradient(135deg, #1a0533 0%, #0f172a 40%, #0d1f3c 100%);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 20px;
+    padding: 36px 40px;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.ar-hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    background: radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%);
+    pointer-events: none;
+}
+.ar-hero h1 {
+    font-size: 2rem; font-weight: 800; color: #fff;
+    margin: 0 0 8px;
+    background: linear-gradient(90deg, #a78bfa, #60a5fa);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.ar-hero p { color: #94a3b8; margin: 0; font-size: 0.95rem; }
+
+/* Controls */
+.ar-controls {
+    display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 28px; align-items: center;
+}
+.ar-input-group {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px; padding: 8px 14px;
+}
+.ar-input-group label { color: #94a3b8; font-size: 0.82rem; white-space: nowrap; }
+.ar-input-group input[type=number] {
+    background: transparent; border: none; outline: none;
+    color: #e2e8f0; font-size: 0.95rem; font-weight: 600; width: 64px;
+}
+.btn-ar-start {
+    background: linear-gradient(135deg, #7c3aed, #4338ca);
+    color: #fff; border: none; border-radius: 10px;
+    padding: 10px 26px; font-size: 0.9rem; font-weight: 700;
+    cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 15px rgba(124,58,237,0.35);
+    display: flex; align-items: center; gap: 8px;
+}
+.btn-ar-start:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124,58,237,0.5); }
+.btn-ar-start:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.btn-ar-stop {
+    background: rgba(239,68,68,0.1); color: #ef4444;
+    border: 1px solid rgba(239,68,68,0.3); border-radius: 10px;
+    padding: 10px 22px; font-size: 0.9rem; font-weight: 600;
+    cursor: pointer; transition: background 0.2s;
+    display: none; align-items: center; gap: 8px;
+}
+.btn-ar-stop:hover { background: rgba(239,68,68,0.2); }
+.btn-ar-stop.visible { display: flex; }
+.btn-ar-promote {
+    background: linear-gradient(135deg, #059669, #047857);
+    color: #fff; border: none; border-radius: 10px;
+    padding: 10px 22px; font-size: 0.9rem; font-weight: 700;
+    cursor: pointer; transition: transform 0.15s, opacity 0.2s;
+    box-shadow: 0 4px 12px rgba(5,150,105,0.3);
+    display: none; align-items: center; gap: 8px;
+}
+.btn-ar-promote:hover { transform: translateY(-1px); }
+.btn-ar-promote.visible { display: flex; }
+
+/* Status bar */
+.ar-status-bar {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; padding: 18px 24px;
+    margin-bottom: 28px; display: none;
+}
+.ar-status-bar.visible { display: block; }
+.ar-status-top {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 12px;
+}
+.ar-pulse {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #a78bfa; flex-shrink: 0;
+    animation: pulse-glow 1.2s infinite;
+}
+@keyframes pulse-glow {
+    0%,100% { box-shadow: 0 0 0 0 rgba(167,139,250,0.5); }
+    50%      { box-shadow: 0 0 0 8px rgba(167,139,250,0); }
+}
+.ar-status-label { color: #e2e8f0; font-size: 0.9rem; font-weight: 600; flex: 1; }
+.ar-counter { color: #a78bfa; font-size: 0.85rem; font-weight: 700; }
+.ar-progress-track {
+    height: 6px; background: rgba(255,255,255,0.08);
+    border-radius: 99px; overflow: hidden;
+}
+.ar-progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #7c3aed, #60a5fa);
+    border-radius: 99px; transition: width 0.5s ease;
+}
+
+/* Champion card */
+.champion-card {
+    background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(5,150,105,0.04));
+    border: 1px solid rgba(16,185,129,0.25);
+    border-radius: 14px; padding: 20px 24px; margin-bottom: 28px;
+    display: none; align-items: center; gap: 20px;
+}
+.champion-card.visible { display: flex; }
+.champion-badge {
+    font-size: 2.2rem; line-height: 1;
+}
+.champion-info { flex: 1; }
+.champion-title { color: #34d399; font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
+.champion-desc { color: #94a3b8; font-size: 0.82rem; line-height: 1.5; }
+.champion-score {
+    font-size: 2rem; font-weight: 900; color: #34d399;
+    text-shadow: 0 0 20px rgba(52,211,153,0.4);
+}
+
+/* Log console */
+.ar-log {
+    background: #0b0f1a;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px; padding: 0;
+    margin-bottom: 28px; overflow: hidden;
+}
+.ar-log-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.03);
+}
+.ar-log-header span { color: #94a3b8; font-size: 0.82rem; font-weight: 600; }
+.ar-log-body {
+    padding: 16px 20px; max-height: 220px; overflow-y: auto;
+    font-family: 'Courier New', monospace; font-size: 0.78rem;
+    line-height: 1.7; color: #64748b;
+}
+.ar-log-body .log-line { color: #94a3b8; }
+.ar-log-body .log-line.new-record { color: #fbbf24; }
+.ar-log-body .log-line.ok { color: #34d399; }
+.ar-log-body .log-line.err { color: #f87171; }
+.ar-log-body::-webkit-scrollbar { width: 4px; }
+.ar-log-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+/* Experiments table */
+.exp-table-wrap {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px; overflow: hidden;
+}
+.exp-table-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 22px; border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.03);
+}
+.exp-table-header h3 { color: #e2e8f0; font-size: 0.95rem; font-weight: 700; margin: 0; }
+.exp-count-badge {
+    background: rgba(139,92,246,0.15); color: #a78bfa;
+    border-radius: 20px; padding: 3px 12px; font-size: 0.78rem; font-weight: 700;
+}
+table.exp-table {
+    width: 100%; border-collapse: collapse;
+}
+table.exp-table thead th {
+    padding: 10px 16px; text-align: left;
+    color: #64748b; font-size: 0.75rem; font-weight: 700; 
+    text-transform: uppercase; letter-spacing: 0.05em;
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+table.exp-table tbody tr {
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+}
+table.exp-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+table.exp-table tbody tr.champion-row { background: rgba(16,185,129,0.05); }
+table.exp-table td {
+    padding: 11px 16px; font-size: 0.82rem; color: #94a3b8;
+}
+.score-badge {
+    font-weight: 700; padding: 3px 10px; border-radius: 6px; font-size: 0.82rem;
+}
+.score-high { background: rgba(16,185,129,0.15); color: #34d399; }
+.score-mid  { background: rgba(245,158,11,0.15); color: #fbbf24; }
+.score-low  { background: rgba(239,68,68,0.12); color: #f87171; }
+.score-none { background: rgba(100,116,139,0.1); color: #64748b; }
+.model-chip {
+    background: rgba(139,92,246,0.1); color: #a78bfa;
+    padding: 2px 10px; border-radius: 5px; font-size: 0.76rem; font-weight: 600;
+}
+.champ-icon { font-size: 1rem; }
+</style>
+
+<!-- Hero -->
+<div class="ar-hero">
+    <h1>🤖 AutoResearch AI Lab</h1>
+    <p>Model mimarisini, özellik kümesini ve hiperparametreleri otonom olarak keşfeden araştırma döngüsü.<br>
+       Her iterasyonda farklı bir konfigürasyon denenir, en iyisi <b>champion</b> seçilir ve tek tıkla aktif modele yüklenir.</p>
+</div>
+
+<!-- Controls -->
+<div class="ar-controls">
+    <div class="ar-input-group">
+        <label>Deney Sayısı</label>
+        <input type="number" id="inp-nexps" value="20" min="2" max="200">
+    </div>
+    <div class="ar-input-group">
+        <label>Süre Limiti (dk)</label>
+        <input type="number" id="inp-budget" value="60" min="5" max="480">
+    </div>
+    <button class="btn-ar-start" id="btn-start" onclick="arStart()">
+        <span>🚀</span> Araştırmayı Başlat
+    </button>
+    <button class="btn-ar-stop" id="btn-stop" onclick="arStop()">
+        <span>🛑</span> Durdur
+    </button>
+    <button class="btn-ar-promote" id="btn-promote" onclick="arPromote()">
+        <span>⬆️</span> Champion'ı Aktif Et
+    </button>
+</div>
+
+<!-- Status bar -->
+<div class="ar-status-bar" id="ar-status-bar">
+    <div class="ar-status-top">
+        <div class="ar-pulse" id="ar-pulse"></div>
+        <div class="ar-status-label" id="ar-status-label">Hazırlanıyor...</div>
+        <div class="ar-counter" id="ar-counter"></div>
+    </div>
+    <div class="ar-progress-track">
+        <div class="ar-progress-fill" id="ar-progress-fill"></div>
+    </div>
+</div>
+
+<!-- Champion card -->
+<div class="champion-card" id="champion-card">
+    <div class="champion-badge">🏆</div>
+    <div class="champion-info">
+        <div class="champion-title">En İyi Konfigürasyon (Champion)</div>
+        <div class="champion-desc" id="champion-desc">—</div>
+    </div>
+    <div class="champion-score" id="champion-score">—</div>
+</div>
+
+<!-- Log console -->
+<div class="ar-log" id="ar-log" style="display:none;">
+    <div class="ar-log-header">
+        <span>🖥 Canlı Deney Logu</span>
+        <span id="log-count">0 kayıt</span>
+    </div>
+    <div class="ar-log-body" id="ar-log-body">
+        <div style="color:#4b5563; font-style:italic;">Araştırma başlatıldığında loglar burada görünecek...</div>
+    </div>
+</div>
+
+<!-- Experiments table -->
+<div class="exp-table-wrap" id="exp-table-wrap">
+    <div class="exp-table-header">
+        <h3>📋 Deney Geçmişi</h3>
+        <span class="exp-count-badge" id="exp-count">0 deney</span>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="exp-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Skor (F1)</th>
+                    <th>Model</th>
+                    <th>Pencere</th>
+                    <th>Özellikler</th>
+                    <th>Örnekler</th>
+                    <th>Süre</th>
+                    <th>Zaman</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="exp-tbody">
+                <tr><td colspan="9" style="text-align:center; color:#4b5563; padding:32px;">
+                    Henüz deney yok. Araştırmayı başlatın!
+                </td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ─── State ───────────────────────────────────────────────────────
+let pollTimer = null;
+let isRunning  = false;
+let lastLogLen = 0;
+
+// ─── Polling ─────────────────────────────────────────────────────
+function startPolling() {
+    clearInterval(pollTimer);
+    pollTimer = setInterval(pollAll, 2500);
+    pollAll();
+}
+
+async function pollAll() {
+    const [statusRes, resultsRes] = await Promise.all([
+        fetch('/api/autoresearch/status'),
+        fetch('/api/autoresearch/results'),
+    ]);
+    const status  = await statusRes.json();
+    const results = await resultsRes.json();
+    renderStatus(status);
+    renderResults(results);
+    renderLog(status);
+
+    if (!status.running && isRunning) {
+        isRunning = false;
+        clearInterval(pollTimer);
+        updateButtons(false);
+        showToast('✅ AutoResearch tamamlandı!', 'success');
+    }
+}
+
+// ─── Render: Status bar ──────────────────────────────────────────
+function renderStatus(s) {
+    const bar   = document.getElementById('ar-status-bar');
+    const label = document.getElementById('ar-status-label');
+    const ctr   = document.getElementById('ar-counter');
+    const fill  = document.getElementById('ar-progress-fill');
+    const pulse = document.getElementById('ar-pulse');
+
+    if (!s.running && s.current_exp === 0) {
+        bar.classList.remove('visible');
+        return;
+    }
+
+    bar.classList.add('visible');
+    const desc = s.current_desc || '...';
+    label.textContent = desc.length > 80 ? desc.slice(0,78)+'…' : desc;
+
+    if (s.total_exp === 'Sınırsız') {
+        ctr.textContent  = `${s.current_exp} / Sınırsız`;
+        fill.style.width = '100%';
+        fill.style.background = 'linear-gradient(90deg, #10b981, #34d399)'; // Yeşil gradient animasyonu
+    } else if (s.total_exp > 0) {
+        const pct = Math.round((s.current_exp / s.total_exp) * 100);
+        ctr.textContent  = `${s.current_exp} / ${s.total_exp} (${pct}%)`;
+        fill.style.width = pct + '%';
+        fill.style.background = 'linear-gradient(90deg, #7c3aed, #60a5fa)'; // Eski stiline geri döndür
+    }
+
+    if (!s.running) {
+        pulse.style.animation = 'none';
+        pulse.style.background = '#34d399';
+    }
+}
+
+// ─── Render: Champion card ───────────────────────────────────────
+function renderChampion(champion) {
+    const card  = document.getElementById('champion-card');
+    const desc  = document.getElementById('champion-desc');
+    const score = document.getElementById('champion-score');
+    const btn   = document.getElementById('btn-promote');
+
+    if (!champion) { card.classList.remove('visible'); return; }
+
+    card.classList.add('visible');
+    btn.classList.add('visible');
+
+    let config = {};
+    try { config = JSON.parse(champion.config_json || '{}'); } catch {}
+    const fp = config.feature_params || {};
+    const mt = config.model_type || '?';
+
+    desc.innerHTML =
+        `<b style="color:#e2e8f0">${mt}</b> &nbsp;|&nbsp; ` +
+        `Pencere: ${fp.window_size ?? '?'} &nbsp;|&nbsp; ` +
+        `H2H: ${fp.use_h2h ?? '?'} &nbsp;|&nbsp; ` +
+        `Oranlar: ${fp.use_odds ?? '?'} &nbsp;|&nbsp; ` +
+        `FormFark: ${fp.use_form_diff ?? '?'}`;
+
+    const f1 = champion.cv_score ? champion.cv_score.toFixed(4) : '—';
+    score.textContent = f1;
+}
+
+// ─── Render: Experiments table ───────────────────────────────────
+function renderResults(data) {
+    const { experiments, champion } = data;
+    renderChampion(champion);
+
+    document.getElementById('exp-count').textContent = `${experiments.length} deney`;
+    const tbody = document.getElementById('exp-tbody');
+
+    if (!experiments || experiments.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#4b5563; padding:32px;">
+            Henüz deney yok. Araştırmayı başlatın!</td></tr>`;
+        return;
+    }
+
+    const champId = champion ? champion.id : null;
+    const allScores = experiments.map(e => e.cv_score).filter(Boolean);
+    const maxScore  = allScores.length ? Math.max(...allScores) : 0;
+
+    tbody.innerHTML = experiments.map(e => {
+        let config = {};
+        try { config = JSON.parse(e.config_json || '{}'); } catch {}
+        const fp = config.feature_params || {};
+        const mt = config.model_type || '—';
+
+        const f1 = e.cv_score;
+        let scoreBadge = `<span class="score-badge score-none">—</span>`;
+        if (f1 !== null && f1 !== undefined) {
+            const cls = f1 >= maxScore * 0.97 ? 'score-high' :
+                        f1 >= maxScore * 0.92 ? 'score-mid' : 'score-low';
+            scoreBadge = `<span class="score-badge ${cls}">${f1.toFixed(4)}</span>`;
+        }
+
+        const isChamp = e.id === champId;
+        const rowCls  = isChamp ? 'champion-row' : '';
+        const champMark = isChamp ? '🏆' : '';
+
+        const featFlags = [
+            fp.use_h2h  ? 'H2H':'',
+            fp.use_odds ? 'Oran':'',
+            fp.use_form_diff ? 'Form':'',
+            fp.use_shots? 'Şut':'',
+            fp.use_corners ? 'Korner':'',
+        ].filter(Boolean).join(', ') || '—';
+
+        const t = e.run_at ? e.run_at.slice(0,16).replace('T',' ') : '—';
+        return `<tr class="${rowCls}">
+            <td style="color:#475569;">${e.id}</td>
+            <td>${scoreBadge}</td>
+            <td><span class="model-chip">${mt}</span></td>
+            <td style="color:#e2e8f0;">${fp.window_size ?? '—'}</td>
+            <td style="color:#94a3b8; font-size:0.76rem;">${featFlags}</td>
+            <td>${e.train_samples ?? '—'}</td>
+            <td>${e.duration_sec ? e.duration_sec.toFixed(1)+'s' : '—'}</td>
+            <td style="color:#475569;">${t}</td>
+            <td class="champ-icon">${champMark}</td>
+        </tr>`;
+    }).join('');
+}
+
+// ─── Render: Log ─────────────────────────────────────────────────
+function renderLog(s) {
+    const log     = document.getElementById('ar-log');
+    const logBody = document.getElementById('ar-log-body');
+    const logCnt  = document.getElementById('log-count');
+    const lines   = s.log || [];
+
+    if (!lines.length) return;
+    log.style.display = 'block';
+    logCnt.textContent = `${lines.length} kayıt`;
+
+    if (lines.length !== lastLogLen) {
+        lastLogLen = lines.length;
+        logBody.innerHTML = lines.slice(-50).map(l => {
+            const cls = l.includes('REKOR') ? 'new-record' :
+                        l.includes('✅')    ? 'ok' :
+                        l.includes('❌')    ? 'err' : '';
+            return `<div class="log-line ${cls}">${escHtml(l)}</div>`;
+        }).join('');
+        logBody.scrollTop = logBody.scrollHeight;
+    }
+}
+
+// ─── Actions ─────────────────────────────────────────────────────
+async function arStart() {
+    const n = parseInt(document.getElementById('inp-nexps').value) || 20;
+    const b = parseFloat(document.getElementById('inp-budget').value) || 60;
+    const res = await fetch('/api/autoresearch/start', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({n_experiments: n, time_budget_min: b}),
+    });
+    const data = await res.json();
+    if (data.ok) {
+        isRunning = true;
+        lastLogLen = 0;
+        updateButtons(true);
+        showToast(data.message, 'success');
+        startPolling();
+    } else {
+        showToast(data.message || 'Hata!', 'error');
+        startPolling(); // henüz çalışıyorsa durumu yenile
+    }
+}
+
+async function arStop() {
+    await fetch('/api/autoresearch/stop', {method:'POST'});
+    showToast('🛑 Durdurma sinyali gönderildi.', 'info');
+}
+
+async function arPromote() {
+    document.getElementById('btn-promote').disabled = true;
+    const res = await fetch('/api/autoresearch/promote', {method:'POST'});
+    const data = await res.json();
+    showToast(data.message, 'success');
+    setTimeout(() => { document.getElementById('btn-promote').disabled = false; }, 5000);
+}
+
+function updateButtons(running) {
+    document.getElementById('btn-start').disabled = running;
+    const stopBtn = document.getElementById('btn-stop');
+    running ? stopBtn.classList.add('visible') : stopBtn.classList.remove('visible');
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────
+function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showToast(msg, type='info') {
+    if (typeof window.showToast === 'function') { window.showToast(msg, type); return; }
+    const c = document.getElementById('toast-container');
+    if (!c) { alert(msg); return; }
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+}
+
+// ─── Init ─────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    startPolling();
+});
+</script>
+{% endblock %}

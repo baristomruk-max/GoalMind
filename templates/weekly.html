@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Haftalık Bülten - Football Data{% endblock %}
+
+{% block content %}
+<div class="daily-container">
+    <div style="text-align: center; margin-bottom: 40px;">
+        <h1 style="margin: 0; font-size: 2.5rem; color: var(--text);">📅 Haftalık Tahminler</h1>
+        <p style="color: var(--text-light); margin-top: 10px;">Yapay Zeka, önümüzdeki 7 günün maçlarını analiz ederek en iyi fırsatları sunar.</p>
+        
+        <div id="sync-status" style="display: none; margin-top: 15px; color: var(--primary); font-weight: 600;">
+            <div class="spinner-small" style="margin-right: 8px;"></div>
+            <span>Arka planda güncel veriler çekiliyor...</span>
+        </div>
+
+        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
+            <button onclick="fetchWeekly(true)" class="btn btn-secondary" id="btn-scan" style="padding: 10px 20px;">
+                <span class="btn-icon">🔄</span> Bülteni Yenile
+            </button>
+            <button onclick="triggerAutonomousRefresh()" class="btn btn-primary" id="btn-auto-refresh" style="padding: 10px 25px; background: linear-gradient(135deg, var(--primary), #4f46e5); border: none;">
+                <span class="btn-icon">🤖</span> Otonom Analizi Tetikle
+            </button>
+        </div>
+
+        <!-- Özet Bilgiler -->
+        <div style="display: flex; justify-content: center; gap: 20px; margin-top: 30px;">
+            <div class="stat-card shadow" style="padding: 15px 25px; min-width: 150px;">
+                <div style="font-size: 0.8rem; color: var(--text-light); text-transform: uppercase;">1X2 Başarı</div>
+                <div id="hit-rate-total" style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">-%</div>
+            </div>
+            <div class="stat-card shadow" style="padding: 15px 25px; min-width: 150px; border-top: 3px solid var(--success);">
+                <div style="font-size: 0.8rem; color: var(--text-light); text-transform: uppercase;">Over 2.5 Başarı</div>
+                <div id="o25-hit-rate" style="font-size: 1.5rem; font-weight: 700; color: var(--success);">-%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Otonom Analizi Manuel Tetikle -->
+    <script>
+    async function triggerAutonomousRefresh() {
+        const btn = document.getElementById('btn-auto-refresh');
+        const originalText = btn.innerHTML;
+        
+        if (!confirm('Tüm bekleyen maçlar mevcut yapay zeka modeli ile tekrar analiz edilecek. Bu işlem arka planda devam edecek. Onaylıyor musunuz?')) return;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-small"></span> Analiz Başlatıldı...';
+        
+        try {
+            const response = await fetch('/api/weekly/refresh', { method: 'POST' });
+            const data = await response.json();
+            
+            if (response.ok) {
+                // sync-status göstergesini aç
+                document.getElementById('sync-status').style.display = 'flex';
+                // 3 saniye sonra butonu eski haline getir ama sync devam eder
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 3000);
+            } else {
+                alert('Hata: ' + data.message);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        } catch (err) {
+            alert('İşlem sırasında bir hata oluştu.');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+    </script>
+
+    <!-- Yükleme Göstergesi -->
+    <div id="loading" style="text-align: center; padding: 40px;">
+        <div class="spinner"></div>
+        <p style="margin-top: 16px; color: var(--text-light);">Tahminler yükleniyor...</p>
+    </div>
+
+    <div id="error-msg" style="display: none; padding: 20px; background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--danger); border-radius: 8px; color: var(--danger); margin-bottom:20px;"></div>
+
+    <!-- Sonuçlar Paneli -->
+    <div id="results-panel" style="display: none;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <h2 style="margin: 0;">🔥 Haftalık AI Önerileri</h2>
+            <div style="font-size: 0.9rem; color: var(--text-light);">
+                Son Güncelleme: <span id="last-update-time" style="color: var(--primary); font-weight: 600;">-</span>
+            </div>
+        </div>
+
+        <div class="table-container shadow">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tarih</th>
+                        <th>Ev Sahibi</th>
+                        <th>Deplasman</th>
+                        <th>Tahmin (1-X-2)</th>
+                        <th>Prob (%)</th>
+                        <th>Durum</th>
+                        <th>Tarih</th>
+                        <th>Ev Sahibi</th>
+                        <th>Deplasman</th>
+                        <th>Analiz / Tier</th>
+                        <th>Tahmin</th>
+                        <th>Güven</th>
+                        <th>Over 2.5</th>
+                    </tr>
+                </thead>
+                <tbody id="predictions-body">
+                    <!-- Dinamik İçerik -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255,255,255,0.1);
+    border-left-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+.spinner-small {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.1);
+    border-left-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+}
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* TIER BADGES */
+.badge-tier {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    letter-spacing: 0.5px;
+}
+
+.tier-platinum { 
+    background: linear-gradient(135deg, #e5e7eb 0%, #ffffff 50%, #9ca3af 100%);
+    color: #111827;
+    box-shadow: 0 0 15px rgba(255,255,255,0.3);
+    border: 1px solid #ffffff;
+}
+.tier-gold { 
+    background: linear-gradient(135deg, #fde047 0%, #fbbf24 100%);
+    color: #92400e;
+    box-shadow: 0 0 10px rgba(251,191,36,0.2);
+}
+.tier-silver { 
+    background: rgba(156, 163, 175, 0.2);
+    color: #d1d5db;
+    border: 1px solid rgba(156, 163, 175, 0.3);
+}
+.tier-bronze { 
+    background: rgba(120, 113, 108, 0.1);
+    color: #78716c;
+}
+
+.layer-indicator {
+    display: flex;
+    gap: 3px;
+    margin-top: 4px;
+}
+.dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+}
+.dot.active { background: var(--success); box-shadow: 0 0 5px var(--success); }
+
+/* Row Highlight for Platinum */
+tr.platinum-row {
+    background: rgba(255, 255, 255, 0.03);
+}
+</style>
+
+<script>
+// Sayfa açıldığında otomatik yükle
+document.addEventListener('DOMContentLoaded', () => {
+    fetchWeekly();
+});
+
+async function fetchWeekly(force = false) {
+    const btn = document.getElementById('btn-scan');
+    const loading = document.getElementById('loading');
+    const results = document.getElementById('results-panel');
+    const errBox = document.getElementById('error-msg');
+    const tbody = document.getElementById('predictions-body');
+    const syncStatus = document.getElementById('sync-status');
+
+    try {
+        const response = await fetch('/api/weekly');
+        const data = await response.json();
+
+        if (!response.ok) throw new Error(data.error || 'Hata');
+
+        syncStatus.style.display = data.is_updating ? 'block' : 'none';
+        document.getElementById('last-update-time').textContent = data.last_update;
+
+        if (data.accuracy_stats) {
+            document.getElementById('hit-rate-total').textContent = `%${data.accuracy_stats.hit_rate || 0}`;
+            document.getElementById('o25-hit-rate').textContent = `%${data.accuracy_stats.over_25_rate || 0}`;
+        }
+
+        if (data.predictions && data.predictions.length > 0) {
+            tbody.innerHTML = '';
+            data.predictions.forEach(item => {
+                const row = document.createElement('tr');
+                
+                // Tier belirleme
+                const tierRaw = item.tier || '🥉 BRONZE';
+                let tierClass = 'tier-bronze';
+                if (tierRaw.includes('PLATINUM')) { tierClass = 'tier-platinum'; row.className = 'platinum-row'; }
+                else if (tierRaw.includes('GOLD')) tierClass = 'tier-gold';
+                else if (tierRaw.includes('SILVER')) tierClass = 'tier-silver';
+
+                // Layer Dots (Heuristik görselleştirme)
+                const conf = item.confidence || 0;
+                const layers = `
+                    <div class="layer-indicator">
+                        <span class="dot active"></span>
+                        <span class="dot ${conf > 65 ? 'active' : ''}"></span>
+                        <span class="dot ${conf > 75 ? 'active' : ''}"></span>
+                        <span class="dot ${tierRaw.includes('PLATINUM') ? 'active' : ''}"></span>
+                    </div>
+                `;
+
+                const o25_val = (item.goals_market && (item.goals_market.over_25 || item.goals_market.over_25_prob)) ? (item.goals_market.over_25 || item.goals_market.over_25_prob) : 0;
+                const over25 = o25_val > 0 ? `%${o25_val.toFixed(1)}` : '-';
+                const o25_class = o25_val > 65 ? 'color: var(--success); font-weight: bold;' : '';
+                
+                const recMarket = (item.goals_market && item.goals_market.recommended_market && item.goals_market.recommended_market !== '1X2') 
+                    ? `<div style="font-size: 0.65rem; color: #fbbf24; margin-top: 2px;">⚡ Öneri: ${item.goals_market.recommended_market}</div>` 
+                    : '';
+
+                // Context Indicators
+                const adv = item.advanced_metrics || {};
+                const standings = (adv.layers && adv.layers.layer4_standings) ? adv.layers.layer4_standings : {};
+                let contextHtml = '';
+                if (standings.relegation_pressure) contextHtml += '<span title="Düşme Potası Baskısı" style="cursor:help;">⚠️</span>';
+                if (standings.must_win) contextHtml += '<span title="Kritik Galibiyet İhtiyacı" style="cursor:help;">🔥</span>';
+
+                const probs = item.win_probabilities || {};
+                const p1 = probs.home ? probs.home.toFixed(0) : (probs.home_win ? probs.home_win.toFixed(0) : '-');
+                const pX = probs.draw ? probs.draw.toFixed(0) : '-';
+                const p2 = probs.away ? probs.away.toFixed(0) : (probs.away_win ? probs.away_win.toFixed(0) : '-');
+
+                row.innerHTML = `
+                    <td style="font-size: 0.85rem; color: var(--text-light);">${item.match_date}</td>
+                    <td style="font-weight: 600;">${item.home_team}</td>
+                    <td style="font-weight: 600;">${item.away_team}</td>
+                    <td>
+                        <span class="badge-tier ${tierClass}">${tierRaw}</span>
+                        ${layers}
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="color: var(--primary); font-weight: 800; font-size: 1.1rem;">${item.predicted_result}</span>
+                            <div style="font-size: 0.7rem; color: var(--text-light); background: rgba(255,255,255,0.05); padding: 2px 5px; border-radius: 4px;">
+                                ${p1} | ${pX} | ${p2}
+                            </div>
+                            <div style="font-size: 0.8rem;">${contextHtml}</div>
+                        </div>
+                        ${recMarket}
+                    </td>
+                    <td>
+                        <div style="font-weight: 700; color: ${conf > 75 ? 'var(--success)' : 'var(--text)'}">%${conf.toFixed(0)}</div>
+                        <div style="width: 100%; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-top:4px;">
+                            <div style="width: ${conf}%; height: 100%; background: ${conf > 75 ? 'var(--success)' : 'var(--primary)'}; border-radius: 2px;"></div>
+                        </div>
+                    </td>
+                    <td style="${o25_class}">${over25}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            results.style.display = 'block';
+        } else {
+            results.style.display = 'block';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px;">Tahmin bulunamadı.</td></tr>';
+        }
+
+        if (data.is_updating) setTimeout(() => fetchWeekly(), 10000);
+
+    } catch (e) {
+        errBox.textContent = e.message;
+        errBox.style.display = 'block';
+    } finally {
+        if (btn) btn.disabled = false;
+        loading.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

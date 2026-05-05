@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}{{ league.name }} - Football Data{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 id="league-title">{{ league.name }}</h1>
+    <div class="page-header-actions">
+        <select class="select-input" id="season-select" onchange="loadLeagueData()">
+            <option value="">Tüm Sezonlar</option>
+        </select>
+    </div>
+</div>
+
+<!-- League Goal Stats Cards -->
+<div class="stats-grid stats-grid-5" id="league-stats-grid">
+    <div class="stat-card stat-card-mini">
+        <div class="stat-value" id="lg-matches">—</div>
+        <div class="stat-label">Maç</div>
+    </div>
+    <div class="stat-card stat-card-mini">
+        <div class="stat-value" id="lg-avg-goals">—</div>
+        <div class="stat-label">Ort. Gol</div>
+    </div>
+    <div class="stat-card stat-card-mini">
+        <div class="stat-value" id="lg-over25">—</div>
+        <div class="stat-label">Üst 2.5 %</div>
+    </div>
+    <div class="stat-card stat-card-mini">
+        <div class="stat-value" id="lg-btts">—</div>
+        <div class="stat-label">KG Var %</div>
+    </div>
+    <div class="stat-card stat-card-mini">
+        <div class="stat-value" id="lg-home-pct">—</div>
+        <div class="stat-label">Ev Sahibi %</div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="charts-row">
+    <div class="chart-card">
+        <div class="card-header"><h3>Sonuç Dağılımı</h3></div>
+        <div class="card-body chart-body"><canvas id="league-results-chart"></canvas></div>
+    </div>
+    <div class="chart-card">
+        <div class="card-header"><h3>Gol Dağılımı</h3></div>
+        <div class="card-body chart-body"><canvas id="league-goals-dist-chart"></canvas></div>
+    </div>
+</div>
+
+<!-- League Table -->
+<div class="card">
+    <div class="card-header">
+        <h3>Puan Tablosu</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="data-table" id="league-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Takım</th>
+                        <th>O</th>
+                        <th>G</th>
+                        <th>B</th>
+                        <th>M</th>
+                        <th>AG</th>
+                        <th>YG</th>
+                        <th>AV</th>
+                        <th>P</th>
+                    </tr>
+                </thead>
+                <tbody id="league-table-body">
+                    <tr><td colspan="10" class="text-center text-muted">Yükleniyor...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Matches -->
+<div class="card">
+    <div class="card-header">
+        <h3>Maçlar</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Tarih</th>
+                        <th>Ev Sahibi</th>
+                        <th>Skor</th>
+                        <th>Deplasman</th>
+                        <th>S.T.</th>
+                    </tr>
+                </thead>
+                <tbody id="league-matches-body">
+                    <tr><td colspan="5" class="text-center text-muted">Yükleniyor...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="load-more-container">
+            <button class="btn btn-secondary" id="load-more-btn" onclick="loadMoreMatches()" style="display:none;">
+                Daha Fazla Yükle
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const LEAGUE_ID = {{ league.id }};
+let matchOffset = 0;
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadSeasons();
+    await loadLeagueData();
+});
+
+async function loadSeasons() {
+    const seasons = await api('/api/seasons');
+    const select = document.getElementById('season-select');
+    seasons.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = `${s.start_year}/${s.end_year}`;
+        select.appendChild(opt);
+    });
+}
+
+function getSeasonParam() {
+    const val = document.getElementById('season-select').value;
+    return val ? `&season_id=${val}` : '';
+}
+
+async function loadLeagueData() {
+    matchOffset = 0;
+    const seasonParam = getSeasonParam();
+
+    // Gol istatistikleri
+    const goalStats = await api(`/api/league/${LEAGUE_ID}/goal-stats?x=1${seasonParam}`);
+    if (goalStats) {
+        document.getElementById('lg-matches').textContent = goalStats.total_matches?.toLocaleString() || '0';
+        document.getElementById('lg-avg-goals').textContent = goalStats.avg_goals || '0';
+        document.getElementById('lg-over25').textContent = (goalStats.over_25_pct || 0) + '%';
+        document.getElementById('lg-btts').textContent = (goalStats.btts_pct || 0) + '%';
+        document.getElementById('lg-home-pct').textContent = (goalStats.home_win_pct || 0) + '%';
+
+        // Sonuç dağılımı
+        createDoughnutChart('league-results-chart', {
+            labels: ['Ev Sahibi', 'Beraberlik', 'Deplasman'],
+            data: [goalStats.home_wins, goalStats.draws, goalStats.away_wins],
+            colors: ['#22c55e', '#f59e0b', '#ef4444']
+        });
+    }
+
+    // Puan tablosu
+    const seasonId = document.getElementById('season-select').value;
+    const table = await api(`/api/league/${LEAGUE_ID}/table?x=1${seasonParam}`);
+    renderLeagueTable(table);
+
+    // Maçlar
+    await loadMatches(true);
+}
+
+function renderLeagueTable(table) {
+    const tbody = document.getElementById('league-table-body');
+    if (!table || !table.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">Veri yok</td></tr>';
+        return;
+    }
+    tbody.innerHTML = table.map((t, i) => {
+        let rowClass = '';
+        if (i < 4) rowClass = 'row-ucl';
+        else if (i >= table.length - 3) rowClass = 'row-relegation';
+        return `<tr class="${rowClass}">
+            <td><strong>${t.position}</strong></td>
+            <td><a href="/team/${encodeURIComponent(t.team)}" class="team-link">${t.team}</a></td>
+            <td>${t.played}</td>
+            <td>${t.won}</td>
+            <td>${t.drawn}</td>
+            <td>${t.lost}</td>
+            <td>${t.goals_for}</td>
+            <td>${t.goals_against}</td>
+            <td class="${t.goal_diff > 0 ? 'text-win' : t.goal_diff < 0 ? 'text-loss' : ''}">${t.goal_diff > 0 ? '+' : ''}${t.goal_diff}</td>
+            <td><strong>${t.points}</strong></td>
+        </tr>`;
+    }).join('');
+}
+
+async function loadMatches(reset = false) {
+    if (reset) matchOffset = 0;
+    const seasonParam = getSeasonParam();
+    const matches = await api(`/api/league/${LEAGUE_ID}/matches?limit=50&offset=${matchOffset}${seasonParam}`);
+    const tbody = document.getElementById('league-matches-body');
+
+    if (reset) tbody.innerHTML = '';
+
+    if (!matches.length && reset) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Maç bulunamadı</td></tr>';
+        document.getElementById('load-more-btn').style.display = 'none';
+        return;
+    }
+
+    tbody.innerHTML += matches.map(m => {
+        const homeClass = m.ftr === 'H' ? 'text-win' : (m.ftr === 'A' ? 'text-loss' : '');
+        const awayClass = m.ftr === 'A' ? 'text-win' : (m.ftr === 'H' ? 'text-loss' : '');
+        return `<tr>
+            <td>${m.match_date || '—'}</td>
+            <td class="${homeClass}"><a href="/team/${encodeURIComponent(m.home_team)}" class="team-link">${m.home_team}</a></td>
+            <td class="score-cell">${m.fthg ?? '?'} — ${m.ftag ?? '?'}</td>
+            <td class="${awayClass}"><a href="/team/${encodeURIComponent(m.away_team)}" class="team-link">${m.away_team}</a></td>
+            <td><span class="badge badge-${m.ftr === 'H' ? 'home' : m.ftr === 'A' ? 'away' : 'draw'}">${m.ftr || '—'}</span></td>
+        </tr>`;
+    }).join('');
+
+    matchOffset += matches.length;
+    document.getElementById('load-more-btn').style.display = matches.length >= 50 ? 'block' : 'none';
+}
+
+function loadMoreMatches() {
+    loadMatches(false);
+}
+</script>
+{% endblock %}

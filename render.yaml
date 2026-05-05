@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: football-data-app
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -b 0.0.0.0:$PORT app:app --timeout 120
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: FLASK_APP
+        value: app.py
+      - key: FLASK_ENV
+        value: production
+    # Note: Free tier does not support persistent disks. 
+    # To keep the DB across restarts, upgrade to a paid plan and uncomment below:
+    # disk:
+    #   name: football-db
+    #   mountPath: /opt/render/project/src/data
+    #   sizeGB: 1

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Dünya futbol liglerinden maç verileri, istatistikler ve analizler">
+    <title>{% block title %}Football Data{% endblock %}</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+    <!-- Ana CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">⚽</span>
+                <span class="logo-text">FootballData</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item {% if request.path == '/' %}active{% endif %}" id="nav-dashboard">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">Dashboard</span>
+            </a>
+            
+            <a href="/predictor" class="nav-item {% if request.path == '/predictor' %}active{% endif %}" id="nav-predictor">
+                <span class="nav-icon">🔮</span>
+                <span class="nav-label">Tahmin Motoru (Manuel)</span>
+            </a>
+
+            <a href="/weekly" class="nav-item {% if request.path == '/weekly' %}active{% endif %}" id="nav-weekly" style="background: rgba(16, 185, 129, 0.1); color: var(--success); margin-top: 10px;">
+                <span class="nav-icon">📅</span>
+                <span class="nav-label">Haftalık Tahminler</span>
+            </a>
+
+            <a href="/accuracy" class="nav-item {% if request.path == '/accuracy' %}active{% endif %}" id="nav-accuracy" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; margin-top: 10px;">
+                <span class="nav-icon">🏆</span>
+                <span class="nav-label">Başarı Analizi</span>
+            </a>
+
+            <a href="/autoresearch" class="nav-item {% if request.path == '/autoresearch' %}active{% endif %}" id="nav-autoresearch" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa; margin-top: 10px;">
+                <span class="nav-icon">🤖</span>
+                <span class="nav-label">AutoResearch (AI Lab)</span>
+            </a>
+
+            <div class="nav-section-title">Ligler</div>
+            <div class="league-list" id="league-list">
+                <!-- JS ile doldurulacak -->
+            </div>
+
+            <div class="nav-section-title">Araçlar</div>
+            <a href="#" class="nav-item" id="nav-fetch-quick" onclick="startFetch(true)">
+                <span class="nav-icon">⚡</span>
+                <span class="nav-label">Hızlı Güncelle (25/26)</span>
+            </a>
+            <a href="#" class="nav-item" id="nav-fetch" onclick="startFetch(false)">
+                <span class="nav-icon">📥</span>
+                <span class="nav-label">Tüm Geçmişi İndir</span>
+            </a>
+            <a href="#" class="nav-item" id="nav-import" onclick="startImport()">
+                <span class="nav-icon">📦</span>
+                <span class="nav-label">Veritabanına Aktar</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="fetch-status" id="fetch-status" style="display:none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <span class="progress-text" id="progress-text">İndiriliyor...</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <button class="menu-toggle" id="menu-toggle" onclick="toggleSidebar()">☰</button>
+            <div class="search-container">
+                <input type="text" class="search-input" id="team-search"
+                       placeholder="Takım ara..." autocomplete="off">
+                <div class="search-results" id="search-results" style="display:none;"></div>
+            </div>
+            <div class="topbar-actions">
+                <span class="status-badge" id="db-status">
+                    <span class="status-dot"></span>
+                    <span id="db-status-text">Yükleniyor...</span>
+                </span>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="page-content">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Ana JS -->
+    <script src="/static/js/main.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
