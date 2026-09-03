@@ -85,3 +85,25 @@ scratch/
 *.backup
 *.archive
 node_modules/
+
+# Security
+ngrok.exe
+ngrok.zip
+*.exe
+*.zip
+setup_ngrok.ps1
+my_url.json
+*.log
+*.txt
+*.tmp
+*.bak
+*.backup
+*.archive
+*.json
+downloaded_files/
+scratch/
+utils/
+*.csv_backup
+node_modules/
+*.js
+package*.json
