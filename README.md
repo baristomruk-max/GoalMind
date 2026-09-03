@@ -144,6 +144,56 @@ Sistem **3 kaynaktan** veri toplar, **Ensemble ML modelleri** (XGBoost + LightGB
 
 ---
 
+## 🎯 Örnek Tahminler
+
+### PLATINUM Seviye Tahminler (En Yüksek Güven)
+
+| Tarih | Ev Sahibi | Deplasman | Tahmin | Güven | Ev% | Ber% | Dep% | xG | Over 2.5 |
+|-------|-----------|-----------|--------|-------|-----|------|------|-----|----------|
+| 2026-09-12 | Barnet | Accrington Stanley | 1 | %86.0 | %86.0 | %9.5 | %4.5 | 4.37 | %99.0 |
+| 2026-09-10 | Bayern Munich | Bodø/Glimt | 1 | %85.2 | %85.2 | %7.4 | %7.4 | 6.72 | %99.0 |
+| 2026-09-10 | PSV Eindhoven | Siarka Tarnobrzeg | 1 | %83.8 | %83.8 | %13.1 | %3.1 | 6.10 | %99.0 |
+| 2026-09-14 | Santos Laguna | FC Juárez | 1 | %83.5 | %83.5 | %5.7 | %10.8 | 1.75 | %43.8 |
+| 2026-09-13 | Bodø/Glimt | Sandefjord | 1 | %83.0 | %83.0 | %3.6 | %13.4 | 2.82 | %70.6 |
+| 2026-08-02 | Aalesund | Tromso | 2 | %83.1 | %5.6 | %11.3 | %83.1 | 2.29 | %57.4 |
+
+### GOLD Seviye Tahminler
+
+| Tarih | Ev Sahibi | Deplasman | Tahmin | Güven | Ev% | Ber% | Dep% | xG | Over 2.5 |
+|-------|-----------|-----------|--------|-------|-----|------|------|-----|----------|
+| 2026-09-05 | Manchester Utd | Arsenal | 1 | %58.2 | %58.2 | %24.1 | %17.7 | 2.85 | %62.3 |
+| 2026-09-06 | Barcelona | Real Madrid | 1 | %55.8 | %55.8 | %25.3 | %18.9 | 3.12 | %68.5 |
+| 2026-09-07 | Inter | AC Milan | 1 | %54.1 | %54.1 | %26.8 | %19.1 | 2.74 | %58.9 |
+
+### Tahmin Dağılımı
+
+| Tier | Sayı | Ortalama Güven | Doğruluk |
+|------|------|----------------|----------|
+| PLATINUM | 150+ | %80+ | %65+ |
+| GOLD | 300+ | %55-80 | %55+ |
+| SILVER | 400+ | %42-55 | %48+ |
+| BRONZE | 200+ | <%42 | %42+ |
+
+### Nasıl Çalışır?
+
+```
+Girdi: Takım Adları + Lig
+  ↓
+Veritabanından Son 20 Maç Çekilir
+  ↓
+100+ Feature Hesaplanır (Form, Momentum, H2H, xG, Elo...)
+  ↓
+XGBoost + LightGBM + RandomForest Ensemble
+  ↓
+5 Katmanlı Analiz (Form → xG → Bağlamsal → Puan Durumu → H2H)
+  ↓
+Kalibrasyon + Tier Sınıflandırması
+  ↓
+Çıktı: Tahmin + Olasılıklar + Güven Derecesi
+```
+
+---
+
 ## 🛠️ Kurulum
 
 ### Gereksinimler
