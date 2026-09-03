@@ -171,13 +171,40 @@ python -c "from ml_predictor import MLPredictor; from database import Database; 
 python app.py
 ```
 
-### Ortam Değişkenleri (İsteğe Bağlı)
+### API Key Ayarları
+
+Proje bazı özellikler için harici API'lerden veri çeker. Bu API key'lerini `.env` dosyasına girerek sistemi tam функционал yapabilirsiniz.
+
+**Adım 1:** `.env.example` dosyasını kopyalayın ve `.env` olarak yeniden adlandırın:
 
 ```bash
-set BSD_API_KEY=your_bsd_api_key
-set FOOTBALL_DATA_ORG_API_KEY=your_football_data_org_key
-set API_KEY=your_custom_api_key
+copy .env.example .env
 ```
+
+**Adım 2:** `.env` dosyasını açın ve kendi API key'lerinizi girin:
+
+```ini
+# ─── Zorunlu (Maç verisi için) ───
+BSD_API_KEY=your_bsd_api_key_here
+
+# ─── İsteğe Bağlı (Ekstra özellikler) ───
+FOOTBALL_DATA_ORG_API_KEY=your_football_data_org_key_here
+PREDIXSPORT_API_KEY=your_predixsport_key_here
+API_KEY=your_custom_api_key_here
+```
+
+**Adım 3:** API key'lerinizi nereden alacağınız:
+
+| API | Nerden Alınır | Ne İşe Yarar |
+|-----|---------------|-------------|
+| `BSD_API_KEY` | [sports.bzzoiro.com](https://sports.bzzoiro.com) | Güncel maç sonuçları ve programı |
+| `FOOTBALL_DATA_ORG_API_KEY` | [football-data.org](https://www.football-data.org/client/register) | Ekstra lig verileri |
+| `PREDIXSPORT_API_KEY` | [predixsport.com](https://predixsport.com) | Gelecek maç tahminleri |
+| `API_KEY` | Kendiniz belirleyin | Dashboard API koruması |
+
+> ⚠️ **Önemli:** `.env` dosyası `.gitignore`'da olduğu için GitHub'a yüklenmez. Key'leriniz güvendedir.
+
+> 💡 **İpucu:** Hiçbir API key'i olmadan da sistem çalışır. football-data.co.uk CSV dosyaları ve BSD API key'i olmadan da temel özellikler kullanılabilir.
 
 ### Hızlı Başlangıç
 
