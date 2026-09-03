@@ -210,7 +210,7 @@ API_KEY=your_custom_api_key_here
 
 ```bash
 # Windows
-baslat.bat
+RUN_APP.bat
 
 # Linux/Mac
 python app.py
