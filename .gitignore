@@ -74,3 +74,14 @@ proof_*.py
 
 # Flask
 instance/
+my_url.json
+*.json
+downloaded_files/
+scratch/
+*.log
+*.txt
+*.tmp
+*.bak
+*.backup
+*.archive
+node_modules/

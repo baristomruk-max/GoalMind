@@ -5,7 +5,7 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-os.environ["API_KEY"] = "test-api-key-12345"
+os.environ["API_KEY"] = "test-api-key-placeholder"
 os.environ["ENABLE_BACKGROUND_TASKS"] = "False"
 
 from app import app
