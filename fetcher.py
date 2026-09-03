@@ -57,11 +57,6 @@ class FootballDataFetcher:
         retry_delay = self.config["retry_delay"]
         timeout = self.config["timeout"]
 
-        # Sahte bağlam oluştur (SSL hatalarını görmezden gel)
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-
         req = urllib.request.Request(
             url, 
             headers={
@@ -74,7 +69,7 @@ class FootballDataFetcher:
 
         for attempt in range(1, max_retries + 1):
             try:
-                with urllib.request.urlopen(req, context=ctx, timeout=timeout) as response:
+                with urllib.request.urlopen(req, timeout=timeout) as response:
                     # İçerik kontrolü
                     content_type = response.headers.get("Content-Type", "")
                     if "text/html" in content_type and "csv" not in content_type:
@@ -188,7 +183,7 @@ class FootballDataFetcher:
 
         target_seasons = [SEASONS[-1]] if only_latest_season else SEASONS
 
-        logger.info("🚀 Tüm veriler indiriliyor..." if not only_latest_season else "⚡ Güncelleme: Sadece son sezon (2526) indiriliyor...")
+        logger.info("🚀 Tüm veriler indiriliyor..." if not only_latest_season else "⚡ Güncelleme: Sadece son sezon indiriliyor...")
         logger.info(f"   Standart ligler: {len(LEAGUES)} lig × {len(target_seasons)} sezon")
         logger.info(f"   Ekstra ligler: {len(EXTRA_LEAGUES)} lig")
 
@@ -196,9 +191,14 @@ class FootballDataFetcher:
         s_ok, s_fail, s_errors = self.fetch_all_standard(seasons=target_seasons)
         logger.info(f"📊 Standart ligler: {s_ok} başarılı, {s_fail} başarısız")
 
-        # Ekstra ligler
-        e_ok, e_fail, e_errors = self.fetch_all_extra()
-        logger.info(f"📊 Ekstra ligler: {e_ok} başarılı, {e_fail} başarısız")
+        # Ekstra ligler - Sadece tam indirmede indir (Hızlı güncellemede atla)
+        if not only_latest_season:
+            logger.info("📥 Ekstra ligler indiriliyor...")
+            e_ok, e_fail, e_errors = self.fetch_all_extra()
+            logger.info(f"📊 Ekstra ligler: {e_ok} başarılı, {e_fail} başarısız")
+        else:
+            logger.info("⏭️ Hızlı mod: Ekstra ligler atlanıyor.")
+            e_ok, e_fail, e_errors = 0, 0, []
 
         self.status["in_progress"] = False
 
@@ -229,8 +229,9 @@ class FootballDataFetcher:
         # Çünkü football-data.co.uk paralel ve ardışık çoklu isteklere karşı 
         # acımasızca IP/Connection ban (Timeout/Reset) uyguluyor.
         for url, filepath, league_name, season in tasks:
-            # Zaten indirilmişse atla
-            if os.path.exists(filepath) and os.path.getsize(filepath) > 100:
+            # Sadece eski sezonlar için atla. Mevcut sezon her zaman güncellenmeli!
+            current_season = SEASONS[-1]
+            if season != current_season and os.path.exists(filepath) and os.path.getsize(filepath) > 100:
                 success_count += 1
                 self.status["completed"] += 1
                 continue

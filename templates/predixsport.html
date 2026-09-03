@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}PredixSport AI Tahminleri - Football Data{% endblock %}
+
+{% block content %}
+<div class="daily-container">
+    <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="margin: 0; font-size: 2.2rem; color: var(--text);">🤖 PredixSport AI Tahminleri</h1>
+        <p style="color: var(--text-light); margin-top: 8px;">Yapay zeka destekli olasılık tahminleri. 1X2, Üst/Alt, KG/Yok, beklenen gol, korner ve şut tahminleri.</p>
+        <div style="display: flex; justify-content: center; gap: 10px; margin-top: 15px;">
+            <button onclick="refreshPredictions()" class="btn btn-secondary" id="btn-refresh">
+                <span class="btn-icon">🔄</span> Tahminleri Yenile
+            </button>
+            <span id="count-badge" style="display:none; background: #8b5cf6; color: #fff; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 0.85rem;"></span>
+        </div>
+        <p style="color: var(--text-light); font-size: 0.8rem; margin-top: 8px;">⚠️ Aylık 200 istek hakkı. Mevsim başladığında otomatik güncellenecek.</p>
+    </div>
+
+    <!-- Filtreler -->
+    <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+        <select id="filter-league" onchange="applyFilters()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); min-width: 180px;">
+            <option value="">Tüm Ligler</option>
+        </select>
+        <input type="text" id="filter-team" oninput="applyFilters()" placeholder="Takım ara..." style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); flex: 1; min-width: 150px;">
+        <button onclick="clearFilters()" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.85rem;">Filtreleri Temizle</button>
+    </div>
+
+    <!-- Tahmin Listesi -->
+    <div id="predictions-list" style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="text-align: center; padding: 40px; color: var(--text-light);">Yükleniyor...</div>
+    </div>
+</div>
+
+<script>
+let allPredictions = [];
+
+async function loadPredictions() {
+    const data = await api('/api/predixsport/predictions');
+    if (!data) return;
+    allPredictions = data;
+    populateLeagueFilter(data);
+    renderPredictions(data);
+}
+
+function populateLeagueFilter(data) {
+    const select = document.getElementById('filter-league');
+    const leagues = [...new Set(data.map(m => m.league).filter(Boolean))].sort();
+    select.innerHTML = '<option value="">Tüm Ligler</option>';
+    leagues.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l;
+        opt.textContent = l.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        select.appendChild(opt);
+    });
+}
+
+function applyFilters() {
+    const league = document.getElementById('filter-league').value;
+    const team = document.getElementById('filter-team').value.toLowerCase();
+
+    let filtered = allPredictions;
+    if (league) filtered = filtered.filter(m => m.league === league);
+    if (team) filtered = filtered.filter(m =>
+        (m.home_team || '').toLowerCase().includes(team) ||
+        (m.away_team || '').toLowerCase().includes(team)
+    );
+    renderPredictions(filtered);
+}
+
+function clearFilters() {
+    document.getElementById('filter-league').value = '';
+    document.getElementById('filter-team').value = '';
+    renderPredictions(allPredictions);
+}
+
+function renderPredictions(matches) {
+    const container = document.getElementById('predictions-list');
+    const badge = document.getElementById('count-badge');
+    badge.textContent = `${matches.length} maç`;
+    badge.style.display = 'inline-block';
+
+    if (!matches.length) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light);">Henüz tahmin yok. Mevsim başladığında otomatik olarak güncellenecek.</div>';
+        return;
+    }
+
+    let html = '';
+    matches.forEach(m => {
+        const hw = (m.home_win_prob * 100).toFixed(1);
+        const dr = (m.draw_prob * 100).toFixed(1);
+        const aw = (m.away_win_prob * 100).toFixed(1);
+        const over = (m.over_2_5_prob * 100).toFixed(1);
+        const btts = (m.btts_yes_prob * 100).toFixed(1);
+        const pred = m.predicted_result || '-';
+
+        // Tahmin rengi
+        let predColor = 'var(--text-light)';
+        if (pred === 'H') predColor = 'var(--success)';
+        else if (pred === 'D') predColor = '#f59e0b';
+        else if (pred === 'A') predColor = 'var(--danger)';
+
+        html += `
+        <div style="background:var(--card);border-radius:12px;border:1px solid var(--border);padding:16px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <div style="flex:1;text-align:right;font-weight:600;font-size:1.05rem;">${m.home_team}</div>
+                <div style="padding:6px 16px;border-radius:8px;font-weight:700;font-size:1.1rem;background:var(--bg);color:${predColor};">${pred}</div>
+                <div style="flex:1;font-weight:600;font-size:1.05rem;">${m.away_team}</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;gap:8px;font-size:0.8rem;color:var(--text-light);">
+                <div style="flex:1;text-align:center;padding:6px;background:var(--bg);border-radius:6px;">
+                    <div style="font-weight:600;color:var(--success);">${hw}%</div>
+                    <div>1</div>
+                </div>
+                <div style="flex:1;text-align:center;padding:6px;background:var(--bg);border-radius:6px;">
+                    <div style="font-weight:600;color:#f59e0b;">${dr}%</div>
+                    <div>X</div>
+                </div>
+                <div style="flex:1;text-align:center;padding:6px;background:var(--bg);border-radius:6px;">
+                    <div style="font-weight:600;color:var(--danger);">${aw}%</div>
+                    <div>2</div>
+                </div>
+                <div style="flex:1;text-align:center;padding:6px;background:var(--bg);border-radius:6px;">
+                    <div style="font-weight:600;">${over}%</div>
+                    <div>Ü2.5</div>
+                </div>
+                <div style="flex:1;text-align:center;padding:6px;background:var(--bg);border-radius:6px;">
+                    <div style="font-weight:600;">${btts}%</div>
+                    <div>KG/Var</div>
+                </div>
+                <div style="flex:1;text-align:center;padding:6px;background:var(--bg);border-radius:6px;">
+                    <div style="font-weight:600;">${m.expected_spread || '-'}</div>
+                    <div>Gol Farkı</div>
+                </div>
+            </div>
+            <div style="margin-top:8px;font-size:0.75rem;color:var(--text-light);text-align:right;">
+                ${m.league ? m.league.replace(/_/g, ' ').toUpperCase() : ''} | ${m.prediction_date || ''}
+            </div>
+        </div>`;
+    });
+    container.innerHTML = html;
+}
+
+async function refreshPredictions() {
+    const btn = document.getElementById('btn-refresh');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-small"></span> Çekiliyor...';
+    await api('/api/predixsport/refresh', { method: 'POST' });
+    await loadPredictions();
+    btn.disabled = false;
+    btn.innerHTML = '<span class="btn-icon">🔄</span> Tahminleri Yenile';
+}
+
+document.addEventListener('DOMContentLoaded', loadPredictions);
+</script>
+{% endblock %}

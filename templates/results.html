@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}Maç Sonuçları - Bitmiş Maçlar{% endblock %}
+
+{% block content %}
+<div class="daily-container">
+    <!-- Üst Bar: Tarih ve Lig Filtreleri -->
+    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; background: var(--card); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border);">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-light);">Başlangıç:</label>
+            <input type="date" id="filter-date-start" onchange="applyFilters()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.85rem;">
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-light);">Bitiş:</label>
+            <input type="date" id="filter-date-end" onchange="applyFilters()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.85rem;">
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-light);">Lig:</label>
+            <select id="filter-league" onchange="applyFilters()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); min-width: 180px; font-size: 0.85rem;">
+                <option value="">Tüm Ligler</option>
+            </select>
+        </div>
+        <button onclick="refreshResults()" class="btn btn-primary" id="btn-refresh" style="padding: 8px 20px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; color: #fff; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">
+            <span class="btn-icon">🔄</span> Senkronize Et
+        </button>
+        <input type="text" id="filter-team" oninput="applyFilters()" placeholder="Takım ara..." style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); flex: 1; min-width: 150px; font-size: 0.85rem;">
+    </div>
+
+    <!-- Tablo -->
+    <div id="results-table" style="overflow-x: auto;">
+        <div style="text-align: center; padding: 40px; color: var(--text-light);">Yükleniyor...</div>
+    </div>
+
+    <!-- Alt Bilgi -->
+    <div id="results-footer" style="margin-top: 12px; padding: 10px 16px; background: var(--card); border-radius: 8px; border: 1px solid var(--border); font-size: 0.8rem; color: var(--text-light);"></div>
+</div>
+
+<style>
+.table-dark {
+    width: 100%;
+    border-collapse: collapse;
+    background: #1a1d23;
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 0.85rem;
+}
+.table-dark thead th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 700;
+    color: #e0e0e0;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    background: #252830;
+    border-bottom: 2px solid #333;
+    white-space: nowrap;
+}
+.table-dark tbody tr {
+    border-bottom: 1px solid #2a2d35;
+    transition: background 0.15s;
+}
+.table-dark tbody tr:hover {
+    background: rgba(37, 99, 235, 0.08);
+}
+.table-dark tbody td {
+    padding: 9px 12px;
+    color: #d0d0d0;
+    white-space: nowrap;
+}
+.table-dark .col-date { min-width: 90px; }
+.table-dark .col-league { min-width: 140px; }
+.table-dark .col-home { text-align: right; font-weight: 600; min-width: 160px; }
+.table-dark .col-score { text-align: center; min-width: 60px; font-weight: 700; color: #fff; }
+.table-dark .col-away { text-align: left; font-weight: 600; min-width: 160px; }
+.table-dark .col-result { text-align: center; min-width: 50px; }
+.table-dark .col-ht { text-align: center; min-width: 50px; color: #aaa; }
+.table-dark .col-xg { text-align: center; min-width: 80px; color: #888; }
+.league-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+.result-badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+.result-1 { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+.result-x { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.result-2 { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+</style>
+
+<script>
+let allResults = [];
+
+async function loadResults() {
+    const data = await api('/api/results');
+    if (!data) return;
+    allResults = data.filter(m => m.FTHG != null && m.FTHG !== '' && m.FTAG != null && m.FTAG !== '');
+    populateLeagueFilter(allResults);
+    setDefaultDates();
+    applyFilters();
+}
+
+function setDefaultDates() {
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    const startInput = document.getElementById('filter-date-start');
+    const endInput = document.getElementById('filter-date-end');
+    
+    if (!startInput.value) {
+        startInput.value = weekAgo.toISOString().split('T')[0];
+    }
+    if (!endInput.value) {
+        endInput.value = today.toISOString().split('T')[0];
+    }
+}
+
+function populateLeagueFilter(data) {
+    const select = document.getElementById('filter-league');
+    const leagues = [...new Set(data.map(m => m.Div).filter(Boolean))].sort();
+    select.innerHTML = '<option value="">Tüm Ligler</option>';
+    leagues.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l;
+        opt.textContent = l;
+        select.appendChild(opt);
+    });
+}
+
+function applyFilters() {
+    const league = document.getElementById('filter-league').value;
+    const dateStart = document.getElementById('filter-date-start').value;
+    const dateEnd = document.getElementById('filter-date-end').value;
+    const team = document.getElementById('filter-team').value.toLowerCase();
+
+    let filtered = allResults;
+    if (league) filtered = filtered.filter(m => m.Div === league);
+    if (dateStart) filtered = filtered.filter(m => m.Date >= dateStart);
+    if (dateEnd) filtered = filtered.filter(m => m.Date <= dateEnd);
+    if (team) filtered = filtered.filter(m =>
+        (m.HomeTeam || '').toLowerCase().includes(team) ||
+        (m.AwayTeam || '').toLowerCase().includes(team)
+    );
+    renderResults(filtered);
+}
+
+function renderResults(matches) {
+    const container = document.getElementById('results-table');
+    const footer = document.getElementById('results-footer');
+
+    if (!matches.length) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light);">Bu tarihlerde sonuç bulunamadı</div>';
+        footer.innerHTML = '';
+        return;
+    }
+
+    let totalGoals = 0;
+    let html = `
+    <table class="table-dark">
+        <thead>
+            <tr>
+                <th class="col-date">Tarih</th>
+                <th class="col-league">Lig</th>
+                <th class="col-home">Ev Sahibi</th>
+                <th class="col-score">Skor</th>
+                <th class="col-away">Deplasman</th>
+                <th class="col-result">Sonuç</th>
+                <th class="col-ht">İY</th>
+                <th class="col-xg">xG</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    matches.forEach(m => {
+        const fthg = parseInt(m.FTHG) || 0;
+        const ftag = parseInt(m.FTAG) || 0;
+        totalGoals += fthg + ftag;
+
+        const league = m.Div || '';
+        
+        // Lig rengi
+        let leagueColor = '#60a5fa';
+        if (league.includes('Premier League') || league.includes('E0')) leagueColor = '#a855f7';
+        else if (league.includes('La Liga') || league.includes('SP1')) leagueColor = '#f97316';
+        else if (league.includes('Serie A') || league.includes('I1')) leagueColor = '#3b82f6';
+        else if (league.includes('Bundesliga') || league.includes('D1')) leagueColor = '#ef4444';
+        else if (league.includes('Ligue 1') || league.includes('F1')) leagueColor = '#06b6d4';
+        else if (league.includes('Super Lig') || league.includes('T1')) leagueColor = '#dc2626';
+        else if (league.includes('Scotland') || league.includes('SC')) leagueColor = '#22c55e';
+
+        // Sonuç
+        let result = '';
+        let resultClass = '';
+        if (fthg > ftag) { result = 'MS 1'; resultClass = 'result-1'; }
+        else if (fthg < ftag) { result = 'MS 2'; resultClass = 'result-2'; }
+        else { result = 'MS X'; resultClass = 'result-x'; }
+
+        // İY
+        const hthg = m.HTHG != null && m.HTHG !== '' ? m.HTHG : '-';
+        const htag = m.HTAG != null && m.HTAG !== '' ? m.HTAG : '-';
+        const htText = (hthg !== '-' && htag !== '-') ? `${hthg} - ${htag}` : '-';
+
+        // xG
+        const xg = (m.xg_home != null && m.xg_away != null) ? `${m.xg_home} - ${m.xg_away}` : '-';
+
+        html += `
+            <tr>
+                <td class="col-date">${m.Date || '-'}</td>
+                <td class="col-league"><span class="league-badge" style="background: ${leagueColor}20; color: ${leagueColor};">${league}</span></td>
+                <td class="col-home">${m.HomeTeam || '-'}</td>
+                <td class="col-score">${fthg} - ${ftag}</td>
+                <td class="col-away">${m.AwayTeam || '-'}</td>
+                <td class="col-result"><span class="result-badge ${resultClass}">${result}</span></td>
+                <td class="col-ht">${htText}</td>
+                <td class="col-xg">${xg}</td>
+            </tr>`;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+
+    const avgGoals = matches.length > 0 ? (totalGoals / matches.length).toFixed(2) : 0;
+    const leagueCount = [...new Set(matches.map(m => m.Div).filter(Boolean))].length;
+    footer.innerHTML = `Toplam: ${matches.length} maç bitmiş | Ort Gol: ${avgGoals} | Toplam Gol: ${totalGoals} | Lig: ${leagueCount}`;
+}
+
+async function refreshResults() {
+    const btn = document.getElementById('btn-refresh');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-small"></span> Senkronize ediliyor...';
+    await api('/api/results/refresh', { method: 'POST' });
+    await loadResults();
+    btn.disabled = false;
+    btn.innerHTML = '<span class="btn-icon">🔄</span> Senkronize Et';
+}
+
+document.addEventListener('DOMContentLoaded', loadResults);
+</script>
+{% endblock %}

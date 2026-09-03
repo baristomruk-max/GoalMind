@@ -6,6 +6,10 @@ football-data.co.uk veri kaynağı için lig kodları, sezonlar ve URL yapılar�
 
 import os
 from datetime import datetime
+from dotenv import load_dotenv
+
+# .env dosyasını yükle
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 # ─── Temel Ayarlar ───
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -61,13 +65,12 @@ def generate_seasons(start_year=15):
     current_year = datetime.now().year
     current_month = datetime.now().month
     
-    # Ağustos öncesiyse mevcut sezon geçen yıl başladı
+    # Ağustos öncesiyse (ay < 8) mevcut sezon geçen yıl başladı
+    # Futbol sezonları Ağustos'ta başlar
     current_season_start = current_year - 2000
-    if current_month < 7:
+    if current_month < 8:
         current_season_start -= 1
         
-    # En azından içinde bulunduğumuz sezona kadar üret
-    # Veya istenirse gelecekteki 1-2 sezon da eklenebilir
     seasons = []
     for y in range(start_year, current_season_start + 1):
         seasons.append(f"{y:02d}{(y+1):02d}")
@@ -85,7 +88,7 @@ SOURCES = {
         "base_url": "https://raw.githubusercontent.com/jokecamp/FootballData/master", # Örnek alternatif
     },
     "football-data-org": {
-        "api_key": "a694ea17fa404df2af5a9fd99559011d",
+        "api_key": os.environ.get("FOOTBALL_DATA_ORG_API_KEY", ""),
         "base_url": "https://api.football-data.org/v4",
 
         "code_mapping": {
@@ -98,6 +101,14 @@ SOURCES = {
             "PPL": "P1",  # Primeira Liga
             "ELC": "E1",  # Championship
         }
+    },
+    "bsd": {
+        "api_key": os.environ.get("BSD_API_KEY", ""),
+        "base_url": os.environ.get("BSD_API_BASE", "https://sports.bzzoiro.com"),
+    },
+    "predixsport": {
+        "api_key": os.environ.get("PREDIXSPORT_API_KEY", ""),
+        "base_url": os.environ.get("PREDIXSPORT_API_BASE", "https://api.predixsport.com/v1"),
     }
 }
 
@@ -122,6 +133,8 @@ EXTRA_LEAGUES = {
     "Israel": "ISR",
     "Japan": "JPN",
     "Mexico": "MEX",
+    "Morocco": "MAR",
+    "Nigeria": "NGA",
     "Norway": "NOR",
     "Paraguay": "PAR",
     "Peru": "PER",
@@ -133,9 +146,10 @@ EXTRA_LEAGUES = {
     "South Korea": "KOR",
     "Sweden": "SWE",
     "Switzerland": "SWZ",
+    "Tunisia": "TUN",
     "Ukraine": "UKR",
     "Uruguay": "URY",
-    "USA - MLS": "USA",
+    "USA": "USA",
     "Vietnam": "VNM",
 }
 
@@ -174,14 +188,14 @@ EXTRA_COLUMNS = [
 FETCH_CONFIG = {
     "max_workers": 5,             # Paralel indirme sayısı
     "max_retries": 3,             # Tekrar deneme sayısı
-    "retry_delay": 2,             # Tekrar deneme aralığı (saniye)
-    "timeout": 30,                # İstek zaman aşımı (saniye)
+    "retry_delay": 5,             # Tekrar deneme aralığı (saniye) - 2'den 5'e çıkarıldı
+    "timeout": 60,                # İstek zaman aşımı (saniye) - 30'dan 60'a çıkarıldı
     "chunk_size": 8192,           # İndirme parça boyutu
 }
 
 # ─── Flask Ayarları ───
 FLASK_CONFIG = {
-    "host": "127.0.0.1",
-    "port": 5000,
-    "debug": True,
+    "host": os.environ.get("HOST", "127.0.0.1"),
+    "port": int(os.environ.get("PORT", 5000)),
+    "debug": os.environ.get("FLASK_DEBUG", "False").lower() == "true",
 }

@@ -7,22 +7,34 @@ Ana uygulama dosyası. API endpoint'leri ve sayfa routing'lerini içerir.
 import os
 import json
 import time
+import math
 import threading
 import logging
+import functools
 from datetime import datetime
 from typing import List, Dict, Any, cast
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify as _flask_jsonify, request
 from database import Database
 from fetcher import FootballDataFetcher
 from analyzer import Analyzer
 from predictor import Predictor
 from ml_predictor import MLPredictor
 from scraper import IddaaScraper
+from bsd_api_scraper import BSDScraper
 from auto_researcher import AutoResearcher, get_status as ar_get_status, stop as ar_stop
 from config import FLASK_CONFIG
 
+# AI Agent sistemi (opsiyonel)
+try:
+    from ai_agents import run_full_routine as ai_run_full, run_quick_diagnostic, GROQ_API_KEY, GROQ_MODEL
+    AI_AGENTS_AVAILABLE = True
+except ImportError as e:
+    AI_AGENTS_AVAILABLE = False
+    GROQ_API_KEY = None
+    GROQ_MODEL = None
+    logging.warning(f"AI Agent sistemi yuklenemedi: {e}")
+
 # ─── Logging ───
-from espn_fetcher import EspnResultsFetcher
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -30,15 +42,69 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ─── NaN-safe JSON Provider ───
+def sanitize_for_json(obj):
+    """NaN, inf gibi geçersiz JSON değerlerini temizler."""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    elif isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_for_json(v) for v in obj]
+    elif isinstance(obj, tuple):
+        return tuple(sanitize_for_json(v) for v in obj)
+    return obj
+
+# ─── API Key Auth ───
+API_KEY = os.environ.get("API_KEY", "")
+
+def require_api_key(f):
+    """Kritik POST endpoint'leri için API key doğrulama decorator'ı."""
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        if not API_KEY:
+            return f(*args, **kwargs)
+        key = request.headers.get("X-API-Key", "")
+        if key != API_KEY:
+            return jsonify({"error": "Geçersiz API key"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
 # ─── Flask App ───
 app = Flask(__name__)
 app.config["JSON_AS_ASCII"] = False
+
+# ─── jsonify wrapper (NaN-safe) ───
+def safe_jsonify(*args, **kwargs):
+    """jsonify çağrısından önce NaN değerlerini temizler."""
+    if args:
+        return _flask_jsonify(sanitize_for_json(args[0]), **kwargs)
+    return _flask_jsonify(**kwargs)
+
+# jsonify'i globally safe_jsonify ile değiştir
+jsonify = safe_jsonify
 
 # ─── Servisler ───
 db = Database()
 db.connect()
 db.create_tables()
 db.seed_leagues_and_seasons()
+logger.info("📥 BSD API geçmiş verileri aktarılıyor...")
+db.import_bsd_csvs()
+
+# Elo'ları eğit (tarihsel maçlarla)
+try:
+    from elo import EloSystem
+    elo_system = EloSystem(db)
+    all_matches_for_elo = db.get_all_matches_df()
+    if all_matches_for_elo is not None and not all_matches_for_elo.empty:
+        matches_list = all_matches_for_elo.to_dict('records')
+        elo_system.train_from_matches(matches_list, save=True)
+        logger.info(f"✅ Elo eğitimi tamamlandı: {len(elo_system.ratings)} takım")
+except Exception as e:
+    logger.error(f"Elo eğitimi hatası: {e}")
 
 fetcher = FootballDataFetcher()
 analyzer = Analyzer(db)
@@ -57,11 +123,46 @@ def refresh_predictions():
 
 auto_researcher = AutoResearcher(db, on_promotion_callback=refresh_predictions)
 
+_verified_teams_cache = None
+
+def get_verified_teams(force_refresh=False):
+    """CSV dosyalarından taranmış doğrulanmış takım listesini döner (Cached)."""
+    global _verified_teams_cache
+    if force_refresh:
+        _verified_teams_cache = None
+        
+    if _verified_teams_cache is not None:
+        return _verified_teams_cache
+        
+    try:
+        if os.path.exists("data/verified_teams.json"):
+            with open("data/verified_teams.json", "r", encoding="utf-8") as f:
+                _verified_teams_cache = set(json.load(f))
+                return _verified_teams_cache
+    except Exception as e:
+        logger.error(f"Verified teams load error: {e}")
+    
+    _verified_teams_cache = set()
+    return _verified_teams_cache
+
 # ─── Global State for Async Updates ───
 _weekly_update_lock = threading.Lock()
 _is_weekly_updating = False
-_last_weekly_update = 0
 _weekly_update_start_time = 0
+
+# Initialize _last_weekly_update to now if future predictions already exist in DB
+# This prevents the hanging background thread from triggering on every page load
+try:
+    _future_count_check = db.execute_query(
+        "SELECT COUNT(*) FROM predictions WHERE match_date >= date('now')"
+    ).fetchone()[0]
+    if _future_count_check > 0:
+        _last_weekly_update = time.time()
+        logger.info(f"✅ DB'de {_future_count_check} gelecek tahmin bulundu, update sıfırlandı.")
+    else:
+        _last_weekly_update = 0
+except Exception:
+    _last_weekly_update = 0
 
 
 
@@ -109,17 +210,6 @@ def autoresearch_page():
 
 # ─── Dashboard / Genel ───
 
-@app.route("/api/sync/manual")
-def api_sync_manual():
-    """ESPN üzerinden manuel senkronizasyon tetikler."""
-    from sync_recent_espn import sync_gap
-    try:
-        # Arka planda çalıştır
-        thread = threading.Thread(target=sync_gap)
-        thread.start()
-        return jsonify({"status": "success", "message": "Senkronizasyon arka planda başlatıldı. sync_progress.log dosyasını kontrol edin."})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
 
 @app.route("/api/stats")
 def api_stats():
@@ -313,11 +403,24 @@ def api_weekly():
     try:
         # 1. Mevcut tahminleri DB'den al (Hızlı)
         stats = db.get_prediction_accuracy_stats()
-        # Sadece gelecekteki maçları filtrele
+        verified = get_verified_teams()
+        
+        # Sadece gelecekteki maçları filtrele (tarih formatları farklı olabilir: DD/MM/YY veya YYYY-MM-DD)
         now_str = datetime.now().strftime("%Y-%m-%d")
+        now_dmy = datetime.now().strftime("%d/%m/%y")
         upcoming = []
         for p in stats["history"]:
-            if p["match_date"] >= now_str:
+            md = p.get("match_date", "")
+            # Her iki formatı da kabul et
+            is_future = False
+            if md:
+                if "/" in md:
+                    # DD/MM/YY formatı — today'den büyük veya eşit mi?
+                    is_future = md >= now_dmy
+                else:
+                    # YYYY-MM-DD formatı
+                    is_future = md >= now_str
+            if is_future:
                 # JSON stringleri parse et
                 for col in ["goals_market", "win_probabilities", "advanced_metrics_json"]:
                     if isinstance(p.get(col), str):
@@ -328,32 +431,45 @@ def api_weekly():
                                 p["advanced_metrics"] = parsed
                             else:
                                 p[col] = parsed
-                        except:
+                        except json.JSONDecodeError:
+                            logger.debug(f"JSON parse hatası ({col}): {p.get(col)[:50]}...")
                             p[col] = {}
                     elif p.get(col) is None:
                         p[col] = {}
+                
+                # CSV verisi kontrolü
+                p["home_has_csv"] = p["home_team"] in verified
+                p["away_has_csv"] = p["away_team"] in verified
+                p["has_csv_data"] = p["home_has_csv"] and p["away_has_csv"]
+                
                 upcoming.append(p)
         
         # 2. Eğer veri yoksa veya eskiyse (1 saat) arka planda güncelleme başlat
-        should_update = len(upcoming) == 0 or (time.time() - _last_weekly_update > 3600)
+        # Mevcut gelecek tahminler varsa tetikleme
+        should_update = len(upcoming) == 0 and (time.time() - _last_weekly_update > 3600)
+        
+        # 10 dakikadan uzun süredir updating ise sıfırla (kilit çökmüş olabilir)
+        if _is_weekly_updating and _weekly_update_start_time > 0 and (time.time() - _weekly_update_start_time > 600):
+            logger.warning("⚠️ Weekly update 10dk+ sürüyor, sıfırlanıyor...")
+            _is_weekly_updating = False
         
         if should_update and not _is_weekly_updating:
+            _is_weekly_updating = True
+            _weekly_update_start_time = time.time()
+            
             def background_update():
                 global _is_weekly_updating, _last_weekly_update
-                with _weekly_update_lock:
-                    if _is_weekly_updating: return
-                    _is_weekly_updating = True
-                
                 try:
-                    logger.info("📡 Arka planda haftalık bülten güncelleniyor...")
+                    logger.info("Arka planda haftalık bülten güncelleniyor...")
+                    bsd_scraper_obj = BSDScraper(db)
+                    bsd_scraper_obj.save_fixtures_csv(days=14)
                     weekly_scraper.get_weekly_predictions()
                     _last_weekly_update = time.time()
-                    logger.info("✅ Arka plan güncellemesi tamamlandı.")
+                    logger.info("Arka plan güncellemesi tamamlandı.")
                 except Exception as e:
-                    logger.error(f"Arka plan güncelleme hatası: {e}")
+                    logger.error(f"Arka plan güncelleme hatası: {e}", exc_info=True)
                 finally:
-                    with _weekly_update_lock:
-                        _is_weekly_updating = False
+                    _is_weekly_updating = False
 
             threading.Thread(target=background_update, daemon=True).start()
 
@@ -366,45 +482,166 @@ def api_weekly():
         
     except Exception as e:
         logger.error(f"Weekly API Error: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Sunucu hatası oluştu"}), 500
+
+
+# ─── Maç Programı ve Sonuçları ───
+
+@app.route("/fixtures")
+def fixtures_page():
+    """Maç Programı sayfası."""
+    return render_template("fixtures.html")
+
+
+@app.route("/api/fixtures")
+def api_fixtures():
+    """Maç programını CSV'den döner, yoksa çeker."""
+    bsd_scraper_obj = BSDScraper(db)
+    fixtures = bsd_scraper_obj.get_fixtures_from_csv()
+
+    if not fixtures:
+        bsd_scraper_obj.save_fixtures_csv(days=14)
+        fixtures = bsd_scraper_obj.get_fixtures_from_csv()
+
+    return jsonify(fixtures)
+
+
+@app.route("/api/fixtures/refresh", methods=["POST"])
+def api_fixtures_refresh():
+    """Maç programını BSD API'den yeniler."""
+    bsd_scraper_obj = BSDScraper(db)
+    success = bsd_scraper_obj.save_fixtures_csv(days=14)
+    count = len(bsd_scraper_obj.get_fixtures_from_csv())
+    return jsonify({"success": success, "count": count})
+
+
+@app.route("/results")
+def results_page():
+    """Maç Sonuçları sayfası."""
+    return render_template("results.html")
+
+
+@app.route("/api/results")
+def api_results():
+    """Maç sonuçlarını CSV'den döner, yoksa çeker."""
+    bsd_scraper_obj = BSDScraper(db)
+    results = bsd_scraper_obj.get_results_from_csv()
+
+    if not results:
+        bsd_scraper_obj.save_results_csv(days=14)
+        results = bsd_scraper_obj.get_results_from_csv()
+
+    return jsonify(results)
+
+
+@app.route("/api/results/refresh", methods=["POST"])
+def api_results_refresh():
+    """Maç sonuçlarını BSD API'den yeniler."""
+    bsd_scraper_obj = BSDScraper(db)
+    success = bsd_scraper_obj.save_results_csv(days=14)
+    count = len(bsd_scraper_obj.get_results_from_csv())
+    return jsonify({"success": success, "count": count})
+
+
+# ─── PredixSport Tahminleri ───
+
+@app.route("/predixsport")
+def predixsport_page():
+    """PredixSport AI Tahminleri sayfası."""
+    return render_template("predixsport.html")
+
+
+@app.route("/api/predixsport/predictions")
+def api_predixsport_predictions():
+    """PredixSport tahminlerini CSV'den döner, yoksa çeker."""
+    from predixsport_scraper import PredixSportScraper
+    scraper = PredixSportScraper()
+
+    csv_path = os.path.join("data", "predixsport_predictions.csv")
+    if os.path.exists(csv_path):
+        import pandas as pd
+        df = pd.read_csv(csv_path)
+        predictions = df.to_dict("records")
+    else:
+        predictions = scraper.save_predictions_csv()
+
+    return jsonify(predictions)
+
+
+@app.route("/api/predixsport/refresh", methods=["POST"])
+def api_predixsport_refresh():
+    """PredixSport tahminlerini yeniler."""
+    from predixsport_scraper import PredixSportScraper
+    scraper = PredixSportScraper()
+    predictions = scraper.save_predictions_csv()
+    return jsonify({"success": True, "count": len(predictions)})
+
+
+@app.route("/api/predixsport/sports")
+def api_predixsport_sports():
+    """PredixSport mevcut spor dallarını listeler."""
+    from predixsport_scraper import PredixSportScraper
+    scraper = PredixSportScraper()
+    sports = scraper.list_sports()
+    return jsonify(sports or {})
+
+
+@app.route("/api/predictions/delete", methods=["POST"])
+@require_api_key
+def api_prediction_delete():
+    data = request.json
+    pred_id = data.get("id")
+    if not pred_id: return jsonify({"error": "ID eksik"}), 400
+    
+    success = db.delete_prediction(pred_id)
+    return jsonify({"success": success})
+
+@app.route("/api/predictions/update", methods=["POST"])
+@require_api_key
+def api_prediction_update():
+    data = request.json
+    pred_id = data.get("id")
+    home_score = data.get("home_score")
+    away_score = data.get("away_score")
+    
+    if not pred_id or home_score is None or away_score is None:
+        return jsonify({"error": "Eksik veri"}), 400
+    
+    success = db.update_prediction_result(pred_id, home_score, away_score)
+    return jsonify({"success": success})
 
 @app.route("/api/weekly/refresh", methods=["POST"])
 def api_weekly_refresh():
     """Haftalık bülteni ve analizleri manuel olarak tetikler."""
     global _is_weekly_updating, _last_weekly_update, _weekly_update_start_time
     
-    with _weekly_update_lock:
-        now = time.time()
-        # Eğer 15 dakikadan uzun sürdüyse kilidi sıfırla (Çökme vb. durumu için)
-        if _is_weekly_updating and (now - _weekly_update_start_time > 900):
-            logger.warning("⚠️ Weekly update lock stuck (15min timeout), resetting...")
-            _is_weekly_updating = False
-            
-        if _is_weekly_updating:
-            return jsonify({"ok": False, "message": "Güncelleme zaten devam ediyor."}), 400
+    if _is_weekly_updating:
+        return jsonify({"ok": False, "message": "Güncelleme zaten devam ediyor."}), 400
+    
+    _is_weekly_updating = True
+    _weekly_update_start_time = time.time()
     
     def background_refresh():
         global _is_weekly_updating, _last_weekly_update, _weekly_update_start_time
-        with _weekly_update_lock:
-            _is_weekly_updating = True
-            _weekly_update_start_time = time.time()
         try:
-            logger.info("🚀 [MANUEL TETİK] Otonom analiz başlatıldı...")
+            logger.info("[MANUEL TETİK] Fixtures güncelleniyor...")
+            bsd_scraper_obj = BSDScraper(db)
+            bsd_scraper_obj.save_fixtures_csv(days=14)
+            logger.info("[MANUEL TETİK] Otonom analiz başlatıldı...")
             weekly_scraper.get_weekly_predictions()
             _last_weekly_update = time.time()
-            logger.info("✅ [MANUEL TETİK] Analiz tamamlandı.")
+            logger.info("[MANUEL TETİK] Analiz tamamlandı.")
             
-            # ⚡ Biten maçların sonuçlarını otomatik çöz (Phase 14)
-            logger.info("🏟️ Biten maçlar sonuçlandırılıyor...")
+            # Biten maçların sonuçlarını otomatik çöz
+            logger.info("Biten maçlar sonuçlandırılıyor...")
             weekly_scraper.resolve_pending_predictions()
-            # ⚡ Eksik goals_market verilerini tamamla
-            logger.info("🔧 Eksik Over 2.5 verileri tamamlanıyor...")
+            # Eksik goals_market verilerini tamamla
+            logger.info("Eksik Over 2.5 verileri tamamlanıyor...")
             db.backfill_missing_goals_market(ml_predictor=weekly_scraper.predictor)
         except Exception as e:
-            logger.error(f"Refresh Hatası: {e}")
+            logger.error(f"Refresh Hatası: {e}", exc_info=True)
         finally:
-            with _weekly_update_lock:
-                _is_weekly_updating = False
+            _is_weekly_updating = False
 
     threading.Thread(target=background_refresh, daemon=True).start()
     return jsonify({"ok": True, "message": "Otonom analiz arka planda başlatıldı."})
@@ -434,12 +671,40 @@ def api_accuracy():
             
         return jsonify(stats)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Accuracy API Error: {e}", exc_info=True)
+        return jsonify({"error": "İstatistikler hesaplanırken hata oluştu"}), 500
+
+
+@app.route("/api/calibration")
+def api_calibration():
+    """Kalibrasyon analizi ve rapor döner."""
+    try:
+        weekly_scraper.resolve_pending_predictions()
+        stats = db.get_prediction_accuracy_stats()
+
+        all_preds = []
+        all_outcomes = []
+        for tier_stat in stats.get("by_tier", {}).values():
+            all_preds.extend(tier_stat.get("avg_confidence_list", []))
+            all_outcomes.extend([1] * int(tier_stat.get("correct", 0)) + [0] * int(tier_stat.get("wrong", 0)))
+
+        if not all_preds:
+            return jsonify({"error": "Yeterli tahmin verisi yok"}), 404
+
+        from calibrator import ModelCalibrator
+        calibrator = ModelCalibrator()
+        report = calibrator.export_calibration_report(all_preds, all_outcomes)
+
+        return jsonify(report)
+    except Exception as e:
+        logger.error(f"Calibration API Error: {e}", exc_info=True)
+        return jsonify({"error": "Kalibrasyon analizi hesaplanırken hata oluştu"}), 500
 
 
 # ─── Model Yönetimi (Self-Learning) ───
 
 @app.route("/api/model/train", methods=["POST"])
+@require_api_key
 def api_model_train():
     """Yapay Zeka modelini yeni verilerle (historical + predictions_history) yeniden eğitir."""
 
@@ -461,12 +726,182 @@ def api_model_train():
         
         return jsonify({"message": "Eğitim işlemi başlatıldı", "status": "started"})
     except Exception as e:
+        logger.error(f"Model train API Error: {e}", exc_info=True)
+        return jsonify({"error": "Eğitim başlatılamadı"}), 500
+
+
+@app.route("/api/self-learning/summary")
+def api_self_learning_summary():
+    """Self-learning durumu özeti."""
+    try:
+        from self_learning import SelfLearningEngine
+        sle = SelfLearningEngine(db)
+        summary = sle.get_learning_summary()
+        return jsonify(summary)
+    except Exception as e:
+        logger.error(f"Self-learning summary error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/self-learning/errors")
+def api_self_learning_errors():
+    """Hata analizi raporu."""
+    try:
+        from self_learning import SelfLearningEngine
+        sle = SelfLearningEngine(db)
+        report = sle.generate_error_report()
+        return jsonify(report)
+    except Exception as e:
+        logger.error(f"Self-learning errors error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/self-learning/reset", methods=["POST"])
+def api_self_learning_reset():
+    """Self-learning durumunu sıfırlar."""
+    try:
+        from self_learning import SelfLearningEngine
+        sle = SelfLearningEngine(db)
+        sle.reset()
+        return jsonify({"message": "Self-learning durumu sıfırlandı"})
+    except Exception as e:
+        logger.error(f"Self-learning reset error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── Profesyonel Dashboard ───────────────────────────────────────
+
+@app.route("/pro-dashboard")
+def pro_dashboard():
+    """Profesyonel analiz dashboard'u."""
+    return render_template("pro_dashboard.html")
+
+
+@app.route("/api/dashboard/calibration")
+def api_dashboard_calibration():
+    """Kalibrasyon analizi verisi."""
+    try:
+        stats = db.get_prediction_accuracy_stats()
+        history = stats.get("history", [])
+
+        if not history:
+            return jsonify({"error": "Veri yok"}), 404
+
+        # History'den tahmin ve sonuç çıkar
+        all_preds = []
+        all_outcomes = []
+        for row in history:
+            conf = row.get("confidence", 50)
+            if conf and isinstance(conf, (int, float)):
+                all_preds.append(conf / 100.0)
+                all_outcomes.append(1 if row.get("status") == "won" else 0)
+
+        if not all_preds:
+            return jsonify({"error": "Veri yok"}), 404
+
+        from calibrator import ModelCalibrator
+        calibrator = ModelCalibrator()
+        analysis = calibrator.analyze_calibration(all_preds, all_outcomes)
+        offsets = calibrator.get_calibration_offsets(all_preds, all_outcomes)
+
+        return jsonify({"analysis": analysis, "offsets": offsets})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/dashboard/roi")
+def api_dashboard_roi():
+    """ROI analizi verisi."""
+    try:
+        predictions = db.get_resolved_predictions_for_training()
+        if not predictions:
+            return jsonify({"error": "Veri yok"}), 404
+
+        # Varsayılan oranlar (tahmin edilen sonuca göre standart piyasa)
+        DEFAULT_ODDS = {"1": 2.0, "X": 3.3, "2": 2.8}
+
+        total_investment = len(predictions) * 100
+        total_return = 0
+        tier_roi = {}
+        confidence_bins = {}
+
+        for p in predictions:
+            pred = p.get("predicted_result", "")
+            conf = p.get("confidence", 50) or 50
+            is_correct = p.get("status") == "won"
+            tier = p.get("tier", "BRONZE") or "BRONZE"
+
+            odds = DEFAULT_ODDS.get(pred, 2.0)
+
+            if is_correct:
+                total_return += 100 * odds
+
+            if tier not in tier_roi:
+                tier_roi[tier] = {"investment": 0, "return": 0, "count": 0}
+            tier_roi[tier]["investment"] += 100
+            tier_roi[tier]["count"] += 1
+            if is_correct:
+                tier_roi[tier]["return"] += 100 * odds
+
+            conf_val = conf / 100.0 if isinstance(conf, (int, float)) else 0.5
+            bin_key = f"{int(conf_val*10)//10*10}-{int(conf_val*10)//10*10+10}"
+            if bin_key not in confidence_bins:
+                confidence_bins[bin_key] = {"correct": 0, "total": 0}
+            confidence_bins[bin_key]["total"] += 1
+            if is_correct:
+                confidence_bins[bin_key]["correct"] += 1
+
+        overall_roi = ((total_return - total_investment) / total_investment * 100) if total_investment > 0 else 0
+
+        for tier in tier_roi:
+            t = tier_roi[tier]
+            t["roi"] = round(((t["return"] - t["investment"]) / t["investment"] * 100) if t["investment"] > 0 else 0, 1)
+
+        for b in confidence_bins:
+            cb = confidence_bins[b]
+            cb["accuracy"] = round(cb["correct"] / cb["total"] * 100, 1) if cb["total"] > 0 else 0
+
+        return jsonify({
+            "overall_roi": round(overall_roi, 1),
+            "total_predictions": len(predictions),
+            "tier_roi": tier_roi,
+            "confidence_bins": confidence_bins,
+            "total_investment": total_investment,
+            "total_return": round(total_return, 1),
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/dashboard/errors")
+def api_dashboard_errors():
+    """Hata analizi dashboard verisi."""
+    try:
+        from self_learning import SelfLearningEngine
+        sle = SelfLearningEngine(db)
+        report = sle.generate_error_report()
+        return jsonify(report)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/dashboard/learning")
+def api_dashboard_learning():
+    """Self-learning durumu dashboard verisi."""
+    try:
+        from self_learning import SelfLearningEngine
+        sle = SelfLearningEngine(db)
+        summary = sle.get_learning_summary()
+        trend = sle.get_accuracy_trend()
+        return jsonify({"summary": summary, "trend": trend})
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
 # ─── AutoResearch API ───────────────────────────────────────────
 
 @app.route("/api/autoresearch/start", methods=["POST"])
+@require_api_key
 def api_ar_start():
     """Otonom araştırma döngüsünü başlatır."""
     state = ar_get_status()
@@ -482,6 +917,7 @@ def api_ar_start():
 
 
 @app.route("/api/autoresearch/stop", methods=["POST"])
+@require_api_key
 def api_ar_stop():
     """Araştırma döngüsünü durdurur."""
     ar_stop()
@@ -503,6 +939,7 @@ def api_ar_results():
 
 
 @app.route("/api/autoresearch/promote", methods=["POST"])
+@require_api_key
 def api_ar_promote():
     """Champion deneyi aktif ML modeline promote eder."""
     def run_promote():
@@ -514,6 +951,7 @@ def api_ar_promote():
 # ─── Veri İndirme ───
 
 @app.route("/api/fetch", methods=["POST"])
+@require_api_key
 def api_fetch():
     """Veri indirmeyi başlatır (arka planda)."""
     if fetcher.status["in_progress"]:
@@ -527,7 +965,13 @@ def api_fetch():
             fetcher.fetch_all(only_latest_season=only_latest_flag)
             # İndirme tamamlandıktan sonra veritabanına aktar
             logger.info("📦 CSV dosyaları veritabanına aktarılıyor...")
-            db.import_all_csvs()
+            db.import_all_csvs(only_latest_season=only_latest_flag)
+            
+            # Takım listesini tazele (Yeni takımlar gelmiş olabilir)
+            from utils.team_utils import update_verified_teams
+            update_verified_teams()
+            get_verified_teams(force_refresh=True)
+            
             logger.info("✅ Tüm veriler aktarıldı!")
         except Exception as e:
             logger.error(f"❌ Hata: {e}")
@@ -546,6 +990,7 @@ def api_fetch_status():
 
 
 @app.route("/api/import", methods=["POST"])
+@require_api_key
 def api_import():
     """Mevcut CSV dosyalarını veritabanına aktarır."""
     def run_import():
@@ -573,82 +1018,157 @@ def api_downloaded_files():
 
 def _autonomous_daily_updater():
     """
-    Günde 2 kere otomatik olarak veritabanını günceller, geçmiş maç sonuçlarını onarır (resolve)
-    ve günün iddaa bültenini tarayıp yeni tahminler çıkarır. Hiçbir insan müdahalesi gerektirmez.
+    Otonom günlük veri güncelleme sistemi.
+    - Başlangıçta hemen çalışır
+    - Her 30 dk'da bir zamanı kontrol eder
+    - Sabah 09:00-09:30 ve akşam 19:00-19:30 aralığında tam rutin çalıştırır
+    - Her rutin sonunda durum özetini loglar
+    - Hatalarda 3 kez yeniden dener
     """
     last_run_date = None
     runs_today = 0
-    
-    # Sunucu başlar başlamaz bir kez hızlı bir resolve çalıştır.
-    try:
-        logger.info("🔄 Uygulama başlangıcı: Bekleyen sonuçlar kontrol ediliyor...")
-        weekly_scraper.resolve_pending_predictions()
-    except:
-        pass
+    MAX_RETRIES = 3
+
+    def run_with_retry(func, name, retries=MAX_RETRIES):
+        """Bir fonksiyonu hata durumunda yeniden dener."""
+        for attempt in range(retries):
+            try:
+                result = func()
+                return result
+            except Exception as e:
+                wait = 2 ** attempt * 5
+                logger.warning(f"⚠️ {name} hatası (deneme {attempt+1}/{retries}): {e}")
+                if attempt < retries - 1:
+                    time.sleep(wait)
+        logger.error(f"❌ {name} {retries} deneme sonrası başarısız.")
+        return None
+
+    def run_full_routine():
+        """Tam otonom rutin: sonuçları çözümle → veri çek → tahmin üret."""
+        stats = {"resolved": 0, "fixtures": 0, "results": 0, "predictions": 0, "errors": []}
+
+        # 1. Bekleyen tahminleri çözümle
+        try:
+            resolved = weekly_scraper.resolve_pending_predictions()
+            stats["resolved"] = resolved or 0
+        except Exception as e:
+            stats["errors"].append(f"resolve: {e}")
+
+        # 2. BSD API'den güncel verileri çek
+        try:
+            bsd = BSDScraper(db)
+            run_with_retry(lambda: bsd.save_fixtures_csv(days=14), "fixtures_csv")
+            run_with_retry(lambda: bsd.save_results_csv(days=14), "results_csv")
+        except Exception as e:
+            stats["errors"].append(f"bsd_fetch: {e}")
+
+        # 2b. Eksik takım verilerini alternatif kaynaklardan tamamla
+        try:
+            from auto_updater import run_auto_update
+            run_with_retry(lambda: run_auto_update(db, import_to_db=True), "auto_updater")
+        except Exception as e:
+            stats["errors"].append(f"auto_updater: {e}")
+
+        # 2c. Harici kaynaklar: Understat xG + ClubElo
+        try:
+            from external_data_integrator import run_external_data_sync
+            run_with_retry(lambda: run_external_data_sync(db), "external_data")
+        except Exception as e:
+            stats["errors"].append(f"external_data: {e}")
+
+        # 3. Tahmin üret
+        try:
+            weekly_scraper.get_weekly_predictions()
+            stats["predictions"] = 1
+        except Exception as e:
+            stats["errors"].append(f"predictions: {e}")
+
+        # Durum özeti
+        if stats["errors"]:
+            logger.warning(f"⚠️ [OTONOM] Rutin tamamlandı ({len(stats['errors'])} hata): {stats['errors']}")
+        else:
+            logger.info(f"✅ [OTONOM] Rutin başarıyla tamamlandı. "
+                       f"Çözülen: {stats['resolved']}, Tahminler: {'üretildi' if stats['predictions'] else 'hata'}")
+
+        # 4. AI Agent rutini (opsiyonel)
+        if AI_AGENTS_AVAILABLE:
+            try:
+                logger.info("🤖 [OTONOM] AI Agent rutini başlatılıyor...")
+                ai_run_full()
+                logger.info("✅ [OTONOM] AI Agent rutini tamamlandı.")
+            except Exception as e:
+                logger.warning(f"⚠️ [OTONOM] AI Agent hatası (kritik değil): {e}")
+
+        return stats
+
+    # Ayrı bir thread'de hemen başlat
+    threading.Thread(target=run_full_routine, daemon=True, name="autonomous-startup").start()
 
     while True:
         try:
             now = datetime.now()
-            
-            # Yeni günde sayscı sıfırla
+
+            # Yeni günde sayacı sıfırla
             if last_run_date != now.date():
                 last_run_date = now.date()
                 runs_today = 0
-                
-            # Günde iki kere: (örneğin sabah 09:xx ve akşam 19:xx -> maçlar bitince ve bülten çıkınca)
-            is_morning_run = runs_today == 0 and now.hour == 9
-            is_evening_run = runs_today == 1 and now.hour == 19
-            
-            if is_morning_run or is_evening_run:
-                logger.info(f"⏰ [OTONOM YÖNETİM] Günlük Veri Güncelleme ve Doğrulama Rutini Başlıyor... ({now.strftime('%H:%M')})")
-                
-                # 1. Bekleyen tahminleri çözümle (Maçlar bittiyse başarı analizini günceller)
-                logger.info("   -> Bekleyen sonuçlar doğrulanıyor...")
-                try:
-                    weekly_scraper.resolve_pending_predictions()
-                except Exception as e:
-                    logger.error(f"   ❌ Resolve hatası: {e}")
-                
-                # 2. Football-Data.co.uk sitesindeki en güncel CSV maç sonuçlarını çek / aktar
-                logger.info("   -> En güncel istatistik verileri ve sonuçlar indiriliyor...")
-                try:
-                    fetcher.fetch_all(only_latest_season=True)
-                    db.import_all_csvs()
-                except Exception as e:
-                    logger.error(f"   X Veri Cekme & Ictarma hatasi: {e}")
 
-                # 2b. Eksik takım verilerini alternatif kaynaklardan tamamla
-                logger.info("   -> Eksik takim verileri kontrol ediliyor...")
-                try:
-                    from auto_updater import run_auto_update
-                    run_auto_update(db, import_to_db=True)
-                except Exception as e:
-                    logger.error(f"   X AutoUpdater hatasi: {e}")
+            # Sabah 09:00-09:30 ve akşam 19:00-19:30 aralığında çalıştır
+            in_morning_window = now.hour == 9 and now.minute < 30
+            in_evening_window = now.hour == 19 and now.minute < 30
 
-                # 2c. Harici kaynaklar: Understat xG + ClubElo
-                logger.info("   -> Harici kaynaklar (xG, ELO) senkronize ediliyor...")
-                try:
-                    from external_data_integrator import run_external_data_sync
-                    run_external_data_sync(db)
-                except Exception as e:
-                    logger.error(f"   X Harici veri hatasi: {e}")
+            should_run = False
+            if in_morning_window and runs_today == 0:
+                should_run = True
+                logger.info("🌅 [OTONOM] Sabah rutini başlıyor...")
+            elif in_evening_window and runs_today <= 1:
+                should_run = True
+                logger.info("🌆 [OTONOM] Akşam rutini başlıyor...")
 
-                
-                # 3. Haftalık iddaa bültenindeki maçları çekip ML & İstatistik ile tahmin yaptır
-                logger.info("   -> Haftalık iddaa bülteni çekiliyor ve yapay zeka tahminleri üretiliyor...")
-                try:
-                    weekly_scraper.get_weekly_predictions()
-                except Exception as e:
-                    logger.error(f"   ❌ Haftalık Bülten Scraper hatası: {e}")
-                    
-                logger.info("✅ [OTONOM YÖNETİM] Rutin Görev Tamamlandı. Veriler, başarı skorları ve tahminler güncel!")
+            if should_run:
+                run_full_routine()
                 runs_today += 1
-                
+
         except Exception as e:
-            logger.error(f"Otonom Updater Döngü Hatası: {e}")
-            
+            logger.error(f"❌ [OTONOM] Döngü hatası: {e}")
+
         # 30 dakikada bir zamanı kontrol et
         time.sleep(1800)
+
+
+# ═══════════════════════════════════════════
+#  AI AGENT API ENDPOINTS
+# ═══════════════════════════════════════════
+
+@app.route("/api/ai-agents/run", methods=["POST"])
+def api_run_ai_agents():
+    """AI Agent rutinini manuel olarak tetikler."""
+    if not AI_AGENTS_AVAILABLE:
+        return _flask_jsonify({"error": "AI Agent sistemi yüklü değil"}), 503
+
+    mode = request.args.get("mode", "full")
+
+    def run_in_background():
+        try:
+            if mode == "diagnostic":
+                run_quick_diagnostic()
+            else:
+                ai_run_full()
+        except Exception as e:
+            logger.error(f"AI Agent manuel çalıştırma hatası: {e}")
+
+    threading.Thread(target=run_in_background, daemon=True, name="ai-agents-manual").start()
+    return _flask_jsonify({"status": "started", "mode": mode})
+
+
+@app.route("/api/ai-agents/status", methods=["GET"])
+def api_ai_agents_status():
+    """AI Agent sistemi durumunu döner."""
+    return _flask_jsonify({
+        "available": AI_AGENTS_AVAILABLE,
+        "groq_key_set": bool(GROQ_API_KEY),
+        "model": GROQ_MODEL if AI_AGENTS_AVAILABLE else None,
+    })
 
 
 def _start_background_tasks_if_needed():
@@ -664,16 +1184,18 @@ def _start_background_tasks_if_needed():
         auto_researcher.start_background(continuous=True)
         
         # Günlük Otomatik Veri Güncelleme ve Sonuçlandırma
-        import threading
         threading.Thread(target=_autonomous_daily_updater, daemon=True).start()
     else:
         logger.info("💤 Arka plan hizmetleri devre dışı (ENABLE_BACKGROUND_TASKS=False).")
         
-        # ⚡ Başlangıçta eksik Over 2.5 verilerini tamamla
+        # ⚡ Başlangıçta eksik Over 2.5 verilerini tamamla ve takım listesini güncelle
         def _startup_backfill():
-            import time
             time.sleep(5)  # App tamamen yüklensin
             try:
+                from utils.team_utils import update_verified_teams
+                update_verified_teams()
+                get_verified_teams(force_refresh=True)
+                
                 logger.info("🔧 [BAŞLANGIÇ] Eksik Over 2.5 verileri kontrol ediliyor...")
                 db.backfill_missing_goals_market(ml_predictor=weekly_scraper.predictor)
             except Exception as e:

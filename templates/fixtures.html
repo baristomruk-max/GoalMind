@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}Maç Programı - Yaklaşan Maçlar{% endblock %}
+
+{% block content %}
+<div class="daily-container">
+    <!-- Üst Bar: Tarih ve Lig Filtreleri -->
+    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; background: var(--card); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border);">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-light);">Başlangıç:</label>
+            <input type="date" id="filter-date-start" onchange="applyFilters()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.85rem;">
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-light);">Bitiş:</label>
+            <input type="date" id="filter-date-end" onchange="applyFilters()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.85rem;">
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-light);">Lig:</label>
+            <select id="filter-league" onchange="applyFilters()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); min-width: 180px; font-size: 0.85rem;">
+                <option value="">Tüm Ligler</option>
+            </select>
+        </div>
+        <button onclick="refreshFixtures()" class="btn btn-primary" id="btn-refresh" style="padding: 8px 20px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; color: #fff; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">
+            <span class="btn-icon">🔄</span> Senkronize Et
+        </button>
+        <input type="text" id="filter-team" oninput="applyFilters()" placeholder="Takım ara..." style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); flex: 1; min-width: 150px; font-size: 0.85rem;">
+    </div>
+
+    <!-- Tablo -->
+    <div id="fixtures-table" style="overflow-x: auto;">
+        <div style="text-align: center; padding: 40px; color: var(--text-light);">Yükleniyor...</div>
+    </div>
+
+    <!-- Alt Bilgi -->
+    <div id="fixtures-footer" style="margin-top: 12px; padding: 10px 16px; background: var(--card); border-radius: 8px; border: 1px solid var(--border); font-size: 0.8rem; color: var(--text-light);"></div>
+</div>
+
+<style>
+.table-dark {
+    width: 100%;
+    border-collapse: collapse;
+    background: #1a1d23;
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 0.85rem;
+}
+.table-dark thead th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 700;
+    color: #e0e0e0;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    background: #252830;
+    border-bottom: 2px solid #333;
+    white-space: nowrap;
+}
+.table-dark tbody tr {
+    border-bottom: 1px solid #2a2d35;
+    transition: background 0.15s;
+}
+.table-dark tbody tr:hover {
+    background: rgba(37, 99, 235, 0.08);
+}
+.table-dark tbody td {
+    padding: 9px 12px;
+    color: #d0d0d0;
+    white-space: nowrap;
+}
+.table-dark .col-date { min-width: 90px; }
+.table-dark .col-time { min-width: 60px; text-align: center; }
+.table-dark .col-league { min-width: 140px; }
+.table-dark .col-home { text-align: right; font-weight: 600; min-width: 160px; }
+.table-dark .col-status { text-align: center; min-width: 80px; }
+.table-dark .col-away { text-align: left; font-weight: 600; min-width: 160px; }
+.table-dark .col-score { text-align: center; min-width: 60px; color: #888; }
+.table-dark .col-xg { text-align: center; min-width: 80px; color: #888; }
+.league-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(37, 99, 235, 0.15);
+    color: #60a5fa;
+    font-weight: 600;
+}
+.status-waiting {
+    color: #f59e0b;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+</style>
+
+<script>
+let allFixtures = [];
+
+async function loadFixtures() {
+    const data = await api('/api/fixtures');
+    if (!data) return;
+    allFixtures = data;
+    populateLeagueFilter(data);
+    setDefaultDates();
+    applyFilters();
+}
+
+function setDefaultDates() {
+    const today = new Date();
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 14);
+    
+    const startInput = document.getElementById('filter-date-start');
+    const endInput = document.getElementById('filter-date-end');
+    
+    if (!startInput.value) {
+        // En erken müsait tarihi bul (CSV'den)
+        if (allFixtures.length > 0) {
+            const dates = allFixtures.map(m => m.Date).filter(Boolean).sort();
+            if (dates.length > 0) {
+                const earliest = dates[0];
+                // YYYY-MM-DD formatında mı kontrol et
+                if (/^\d{4}-\d{2}-\d{2}$/.test(earliest)) {
+                    startInput.value = earliest;
+                } else {
+                    startInput.value = today.toISOString().split('T')[0];
+                }
+            } else {
+                startInput.value = today.toISOString().split('T')[0];
+            }
+        } else {
+            startInput.value = today.toISOString().split('T')[0];
+        }
+    }
+    if (!endInput.value) {
+        endInput.value = nextWeek.toISOString().split('T')[0];
+    }
+}
+
+function populateLeagueFilter(data) {
+    const select = document.getElementById('filter-league');
+    const leagues = [...new Set(data.map(m => m.Div).filter(Boolean))].sort();
+    select.innerHTML = '<option value="">Tüm Ligler</option>';
+    leagues.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l;
+        opt.textContent = l;
+        select.appendChild(opt);
+    });
+}
+
+function applyFilters() {
+    const league = document.getElementById('filter-league').value;
+    const dateStart = document.getElementById('filter-date-start').value;
+    const dateEnd = document.getElementById('filter-date-end').value;
+    const team = document.getElementById('filter-team').value.toLowerCase();
+
+    let filtered = allFixtures;
+    if (league) filtered = filtered.filter(m => m.Div === league);
+    if (dateStart) filtered = filtered.filter(m => m.Date >= dateStart);
+    if (dateEnd) filtered = filtered.filter(m => m.Date <= dateEnd);
+    if (team) filtered = filtered.filter(m =>
+        (m.HomeTeam || '').toLowerCase().includes(team) ||
+        (m.AwayTeam || '').toLowerCase().includes(team)
+    );
+    renderFixtures(filtered);
+}
+
+function renderFixtures(matches) {
+    const container = document.getElementById('fixtures-table');
+    const footer = document.getElementById('fixtures-footer');
+
+    if (!matches.length) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light);">Bu tarihlerde maç bulunamadı</div>';
+        footer.innerHTML = '';
+        return;
+    }
+
+    let html = `
+    <table class="table-dark">
+        <thead>
+            <tr>
+                <th class="col-date">Tarih</th>
+                <th class="col-time">Saat</th>
+                <th class="col-league">Lig</th>
+                <th class="col-home">Ev Sahibi</th>
+                <th class="col-status">Durum</th>
+                <th class="col-away">Deplasman</th>
+                <th class="col-score">Skor</th>
+                <th class="col-xg">xG</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    matches.forEach(m => {
+        const time = m.Time || '--:--';
+        const league = m.Div || '';
+        const status = m.Status || 'Bekliyor';
+        const score = (m.FTHG !== '' && m.FTHG != null && m.FTAG !== '' && m.FTAG != null)
+            ? `${m.FTHG} : ${m.FTAG}` : '- : -';
+        const xg = (m.has_xg || m.xg_home) ? `${m.xg_home || '-'} - ${m.xg_away || '-'}` : '-';
+
+        html += `
+            <tr>
+                <td class="col-date">${m.Date || '-'}</td>
+                <td class="col-time">${time}</td>
+                <td class="col-league"><span class="league-badge">${league}</span></td>
+                <td class="col-home">${m.HomeTeam || '-'}</td>
+                <td class="col-status"><span class="status-waiting">${status === 'notstarted' ? 'Bekliyor' : status}</span></td>
+                <td class="col-away">${m.AwayTeam || '-'}</td>
+                <td class="col-score">${score}</td>
+                <td class="col-xg">${xg}</td>
+            </tr>`;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+
+    const leagueCount = [...new Set(matches.map(m => m.Div).filter(Boolean))].length;
+    footer.innerHTML = `Toplam: ${matches.length} maç | Lig: ${leagueCount} | ${new Date().toLocaleString('tr-TR')}`;
+}
+
+async function refreshFixtures() {
+    const btn = document.getElementById('btn-refresh');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-small"></span> Senkronize ediliyor...';
+    await api('/api/fixtures/refresh', { method: 'POST' });
+    await loadFixtures();
+    btn.disabled = false;
+    btn.innerHTML = '<span class="btn-icon">🔄</span> Senkronize Et';
+}
+
+document.addEventListener('DOMContentLoaded', loadFixtures);
+</script>
+{% endblock %}

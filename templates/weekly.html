@@ -35,7 +35,6 @@
         </div>
     </div>
 
-    <!-- Otonom Analizi Manuel Tetikle -->
     <script>
     async function triggerAutonomousRefresh() {
         const btn = document.getElementById('btn-auto-refresh');
@@ -51,9 +50,7 @@
             const data = await response.json();
             
             if (response.ok) {
-                // sync-status göstergesini aç
                 document.getElementById('sync-status').style.display = 'flex';
-                // 3 saniye sonra butonu eski haline getir ama sync devam eder
                 setTimeout(() => {
                     btn.innerHTML = originalText;
                     btn.disabled = false;
@@ -71,7 +68,6 @@
     }
     </script>
 
-    <!-- Yükleme Göstergesi -->
     <div id="loading" style="text-align: center; padding: 40px;">
         <div class="spinner"></div>
         <p style="margin-top: 16px; color: var(--text-light);">Tahminler yükleniyor...</p>
@@ -79,7 +75,6 @@
 
     <div id="error-msg" style="display: none; padding: 20px; background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--danger); border-radius: 8px; color: var(--danger); margin-bottom:20px;"></div>
 
-    <!-- Sonuçlar Paneli -->
     <div id="results-panel" style="display: none;">
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
@@ -89,27 +84,21 @@
             </div>
         </div>
 
-        <div class="table-container shadow">
-            <table>
+        <div class="table-container shadow" style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
                 <thead>
                     <tr>
-                        <th>Tarih</th>
-                        <th>Ev Sahibi</th>
-                        <th>Deplasman</th>
-                        <th>Tahmin (1-X-2)</th>
-                        <th>Prob (%)</th>
-                        <th>Durum</th>
-                        <th>Tarih</th>
-                        <th>Ev Sahibi</th>
-                        <th>Deplasman</th>
-                        <th>Analiz / Tier</th>
-                        <th>Tahmin</th>
-                        <th>Güven</th>
-                        <th>Over 2.5</th>
+                        <th style="padding: 10px 8px; text-align: left; border-bottom: 2px solid var(--border); white-space: nowrap;">Tarih</th>
+                        <th style="padding: 10px 8px; text-align: left; border-bottom: 2px solid var(--border);">Ev Sahibi</th>
+                        <th style="padding: 10px 8px; text-align: left; border-bottom: 2px solid var(--border);">Deplasman</th>
+                        <th style="padding: 10px 8px; text-align: center; border-bottom: 2px solid var(--border); white-space: nowrap;">Tahmin</th>
+                        <th style="padding: 10px 8px; text-align: center; border-bottom: 2px solid var(--border); white-space: nowrap;">Prob (1|X|2)</th>
+                        <th style="padding: 10px 8px; text-align: center; border-bottom: 2px solid var(--border);">Tier</th>
+                        <th style="padding: 10px 8px; text-align: center; border-bottom: 2px solid var(--border);">Güven</th>
+                        <th style="padding: 10px 8px; text-align: center; border-bottom: 2px solid var(--border); white-space: nowrap;">Over 2.5</th>
                     </tr>
                 </thead>
                 <tbody id="predictions-body">
-                    <!-- Dinamik İçerik -->
                 </tbody>
             </table>
         </div>
@@ -118,8 +107,7 @@
 
 <style>
 .spinner {
-    width: 40px;
-    height: 40px;
+    width: 40px; height: 40px;
     border: 4px solid rgba(255,255,255,0.1);
     border-left-color: var(--primary);
     border-radius: 50%;
@@ -127,8 +115,7 @@
     display: inline-block;
 }
 .spinner-small {
-    width: 16px;
-    height: 16px;
+    width: 16px; height: 16px;
     border: 2px solid rgba(255,255,255,0.1);
     border-left-color: var(--primary);
     border-radius: 50%;
@@ -138,29 +125,23 @@
 }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 
-/* TIER BADGES */
 .badge-tier {
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 11px;
-    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
     text-transform: uppercase;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    letter-spacing: 0.5px;
+    display: inline-block;
+    white-space: nowrap;
 }
-
 .tier-platinum { 
     background: linear-gradient(135deg, #e5e7eb 0%, #ffffff 50%, #9ca3af 100%);
     color: #111827;
-    box-shadow: 0 0 15px rgba(255,255,255,0.3);
-    border: 1px solid #ffffff;
+    box-shadow: 0 0 10px rgba(255,255,255,0.2);
 }
 .tier-gold { 
     background: linear-gradient(135deg, #fde047 0%, #fbbf24 100%);
     color: #92400e;
-    box-shadow: 0 0 10px rgba(251,191,36,0.2);
 }
 .tier-silver { 
     background: rgba(156, 163, 175, 0.2);
@@ -171,28 +152,9 @@
     background: rgba(120, 113, 108, 0.1);
     color: #78716c;
 }
-
-.layer-indicator {
-    display: flex;
-    gap: 3px;
-    margin-top: 4px;
-}
-.dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.1);
-}
-.dot.active { background: var(--success); box-shadow: 0 0 5px var(--success); }
-
-/* Row Highlight for Platinum */
-tr.platinum-row {
-    background: rgba(255, 255, 255, 0.03);
-}
 </style>
 
 <script>
-// Sayfa açıldığında otomatik yükle
 document.addEventListener('DOMContentLoaded', () => {
     fetchWeekly();
 });
@@ -223,80 +185,59 @@ async function fetchWeekly(force = false) {
             tbody.innerHTML = '';
             data.predictions.forEach(item => {
                 const row = document.createElement('tr');
+                row.style.borderBottom = '1px solid var(--border)';
                 
-                // Tier belirleme
+                // Tier
                 const tierRaw = item.tier || '🥉 BRONZE';
                 let tierClass = 'tier-bronze';
-                if (tierRaw.includes('PLATINUM')) { tierClass = 'tier-platinum'; row.className = 'platinum-row'; }
+                if (tierRaw.includes('PLATINUM')) tierClass = 'tier-platinum';
                 else if (tierRaw.includes('GOLD')) tierClass = 'tier-gold';
                 else if (tierRaw.includes('SILVER')) tierClass = 'tier-silver';
 
-                // Layer Dots (Heuristik görselleştirme)
-                const conf = item.confidence || 0;
-                const layers = `
-                    <div class="layer-indicator">
-                        <span class="dot active"></span>
-                        <span class="dot ${conf > 65 ? 'active' : ''}"></span>
-                        <span class="dot ${conf > 75 ? 'active' : ''}"></span>
-                        <span class="dot ${tierRaw.includes('PLATINUM') ? 'active' : ''}"></span>
-                    </div>
-                `;
-
-                const o25_val = (item.goals_market && (item.goals_market.over_25 || item.goals_market.over_25_prob)) ? (item.goals_market.over_25 || item.goals_market.over_25_prob) : 0;
-                const over25 = o25_val > 0 ? `%${o25_val.toFixed(1)}` : '-';
-                const o25_class = o25_val > 65 ? 'color: var(--success); font-weight: bold;' : '';
-                
-                const recMarket = (item.goals_market && item.goals_market.recommended_market && item.goals_market.recommended_market !== '1X2') 
-                    ? `<div style="font-size: 0.65rem; color: #fbbf24; margin-top: 2px;">⚡ Öneri: ${item.goals_market.recommended_market}</div>` 
-                    : '';
-
-                // Context Indicators
-                const adv = item.advanced_metrics || {};
-                const standings = (adv.layers && adv.layers.layer4_standings) ? adv.layers.layer4_standings : {};
-                let contextHtml = '';
-                if (standings.relegation_pressure) contextHtml += '<span title="Düşme Potası Baskısı" style="cursor:help;">⚠️</span>';
-                if (standings.must_win) contextHtml += '<span title="Kritik Galibiyet İhtiyacı" style="cursor:help;">🔥</span>';
-
+                // Probabilities
                 const probs = item.win_probabilities || {};
                 const p1 = probs.home ? probs.home.toFixed(0) : (probs.home_win ? probs.home_win.toFixed(0) : '-');
                 const pX = probs.draw ? probs.draw.toFixed(0) : '-';
                 const p2 = probs.away ? probs.away.toFixed(0) : (probs.away_win ? probs.away_win.toFixed(0) : '-');
 
+                // Over 2.5
+                const gm = item.goals_market || {};
+                const o25Val = gm.over_25 || gm.over_25_prob || 0;
+                const over25 = o25Val > 0 ? `%${o25Val.toFixed(1)}` : '-';
+                const o25Style = o25Val > 65 ? 'color: var(--success); font-weight: bold;' : '';
+
+                // Confidence
+                const conf = item.confidence || 0;
+                const confColor = conf > 75 ? 'var(--success)' : (conf > 60 ? 'var(--primary)' : 'var(--text)');
+
                 row.innerHTML = `
-                    <td style="font-size: 0.85rem; color: var(--text-light);">${item.match_date}</td>
-                    <td style="font-weight: 600;">${item.home_team}</td>
-                    <td style="font-weight: 600;">${item.away_team}</td>
-                    <td>
+                    <td style="padding: 10px 8px; font-size: 0.85rem; color: var(--text-light); white-space: nowrap;">${item.match_date}</td>
+                    <td style="padding: 10px 8px; font-weight: 600;">${item.home_team}</td>
+                    <td style="padding: 10px 8px; font-weight: 600;">${item.away_team}</td>
+                    <td style="padding: 10px 8px; text-align: center;">
+                        <span style="color: var(--primary); font-weight: 800; font-size: 1.1rem;">${item.predicted_result}</span>
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center; font-size: 0.85rem; color: var(--text-light);">
+                        ${p1} | ${pX} | ${p2}
+                    </td>
+                    <td style="padding: 10px 8px; text-align: center;">
                         <span class="badge-tier ${tierClass}">${tierRaw}</span>
-                        ${layers}
                     </td>
-                    <td>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="color: var(--primary); font-weight: 800; font-size: 1.1rem;">${item.predicted_result}</span>
-                            <div style="font-size: 0.7rem; color: var(--text-light); background: rgba(255,255,255,0.05); padding: 2px 5px; border-radius: 4px;">
-                                ${p1} | ${pX} | ${p2}
-                            </div>
-                            <div style="font-size: 0.8rem;">${contextHtml}</div>
-                        </div>
-                        ${recMarket}
+                    <td style="padding: 10px 8px; text-align: center;">
+                        <span style="font-weight: 700; color: ${confColor};">%${conf.toFixed(0)}</span>
                     </td>
-                    <td>
-                        <div style="font-weight: 700; color: ${conf > 75 ? 'var(--success)' : 'var(--text)'}">%${conf.toFixed(0)}</div>
-                        <div style="width: 100%; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-top:4px;">
-                            <div style="width: ${conf}%; height: 100%; background: ${conf > 75 ? 'var(--success)' : 'var(--primary)'}; border-radius: 2px;"></div>
-                        </div>
-                    </td>
-                    <td style="${o25_class}">${over25}</td>
+                    <td style="padding: 10px 8px; text-align: center; ${o25Style}">${over25}</td>
                 `;
                 tbody.appendChild(row);
             });
             results.style.display = 'block';
         } else {
             results.style.display = 'block';
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px;">Tahmin bulunamadı.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px; color: var(--text-light);">Tahmin bulunamadı.</td></tr>';
         }
 
-        if (data.is_updating) setTimeout(() => fetchWeekly(), 10000);
+        if (data.is_updating) setTimeout(() => fetchWeekly(), 5000);
+        else if (data.predictions && data.predictions.length === 0) setTimeout(() => fetchWeekly(), 5000);
 
     } catch (e) {
         errBox.textContent = e.message;

@@ -5,6 +5,12 @@ import subprocess
 import time
 import json
 
+ngrok_token = os.environ.get("NGROK_AUTHTOKEN", "")
+if not ngrok_token:
+    print("HATA: NGROK_AUTHTOKEN environment variable tanımlı değil!")
+    print("Lütfen .env dosyasına NGROK_AUTHTOKEN ekleyin.")
+    exit(1)
+
 url = "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip"
 file_name = "ngrok.zip"
 
@@ -17,7 +23,7 @@ if not os.path.exists("ngrok.exe"):
         zip_ref.extractall(".")
 
 print("Configuring ngrok...")
-subprocess.run(["ngrok.exe", "config", "add-authtoken", "3Au3i7OsOxNwprCgHE5CdAMA4Xg_2btouU73MKs2gm1Mkt2QB"], check=True)
+subprocess.run(["ngrok.exe", "config", "add-authtoken", ngrok_token], check=True)
 
 print("Starting ngrok...")
 # Start hidden

@@ -24,38 +24,50 @@ class MLPredictor:
 
     def __init__(self, db: Database):
         self.db = db
-        self.model = None
-        self.scaler = None
-        self.feature_columns = None
-        self.model_path = os.path.join(os.path.dirname(__file__), "ml_model.pkl")
-        self.scaler_path = os.path.join(os.path.dirname(__file__), "ml_scaler.pkl")
-        self.features_path = os.path.join(os.path.dirname(__file__), "ml_features.pkl")
+        self.models_dir = os.path.join(os.path.dirname(__file__), "models")
+        os.makedirs(self.models_dir, exist_ok=True)
+        
+        self.models = {}
+        self.scalers = {}
+        self.feature_columns = {}
+        self.last_loaded_time = {}
+        
+        self._elo_cache = None
+        self._elo_cache_time = 0
+        self._calibrator_cache = None
+        
+        # Geriye dönük uyumluluk için eski path tanımları
+        self.model_path = os.path.join(self.models_dir, "general_model.pkl")
+        self.scaler_path = os.path.join(self.models_dir, "general_scaler.pkl")
+        self.features_path = os.path.join(self.models_dir, "general_features.pkl")
         
         if ML_AVAILABLE:
             self.load_model()
-            self.last_loaded_time = time.time()
         else:
-            self.last_loaded_time = 0
+            self.last_loaded_time = {}
 
-    def _prepare_data(self):
-        """Tüm liglerdeki geçmiş maç verilerinden ve başarı analizinden eğitim veri seti oluşturur."""
-        # 1. Ana geçmiş verileri getir
+    def _prepare_data(self, league_id=None):
+        """Lig bazlı veya genel geçmiş verilerden eğitim veri seti oluşturur."""
         limit = 10000 if os.environ.get('RENDER') else 100000
         matches = self.db.get_matches(limit=limit)
         df_historical = pd.DataFrame(matches)
         
-        # 2. Sonuçlanan kendi tahminlerini getir (Self-learning)
         resolved_predictions = self.db.get_resolved_predictions_for_training()
         df_resolved = pd.DataFrame(resolved_predictions)
         
         if df_historical.empty and df_resolved.empty:
             return pd.DataFrame(), None, {}
 
-        # Verileri birleştir
         df = pd.concat([df_historical, df_resolved], ignore_index=True)
         
         if 'fthg' not in df.columns:
             return pd.DataFrame(), None, {}
+
+        if league_id and 'league_div' in df.columns:
+            df = df[df['league_div'] == league_id].copy()
+            if len(df) < 50:
+                logger.warning(f"⚠️ {league_id} ligi için yeterli veri yok ({len(df)} maç).")
+                return pd.DataFrame(), None, {}
 
         # Eksik verileri temizle
         df = df.dropna(subset=['fthg', 'ftag', 'ftr']).copy()
@@ -87,7 +99,7 @@ class MLPredictor:
                 h_stat = team_stats[home]
                 a_stat = team_stats[away]
                 
-                features.append({
+                feat = {
                     'home_avg_goals_scored': np.mean(h_stat['scored'][-10:]) if h_stat['scored'] else 1.5,
                     'home_avg_goals_conceded': np.mean(h_stat['conceded'][-10:]) if h_stat['conceded'] else 1.5,
                     'home_win_rate': np.mean(h_stat['wins'][-10:]) if h_stat['wins'] else 0.33,
@@ -96,11 +108,49 @@ class MLPredictor:
                     'away_avg_goals_conceded': np.mean(a_stat['conceded'][-10:]) if a_stat['conceded'] else 1.5,
                     'away_win_rate': np.mean(a_stat['wins'][-10:]) if a_stat['wins'] else 0.33,
                     
-                    # Oranlar (Eğer varsa)
                     'b365h': float(row['b365h']),
                     'b365d': float(row['b365d']),
-                    'b365a': float(row['b365a'])
-                })
+                    'b365a': float(row['b365a']),
+                }
+
+                # Gelişmiş feature'lar (FeatureEngineer)
+                try:
+                    from feature_engineering import FeatureEngineer
+                    fe = FeatureEngineer()
+                    h_matches_list = [{'scored': s, 'conceded': c, 'result': 'W' if w else 'L', 'points': 3 if w else 0,
+                                       'shots': 10, 'sot': 4, 'corners': 5, 'yellow': 1.5, 'red': 0.1,
+                                       'is_home': True, 'b365h': 2.0, 'b365d': 3.0, 'b365a': 2.5,
+                                       'home_team': home, 'away_team': away, 'ftr': row['ftr']}
+                                      for s, c, w in zip(h_stat['scored'][-20:], h_stat['conceded'][-20:], h_stat['wins'][-20:])]
+                    a_matches_list = [{'scored': s, 'conceded': c, 'result': 'W' if w else 'L', 'points': 3 if w else 0,
+                                       'shots': 10, 'sot': 4, 'corners': 5, 'yellow': 1.5, 'red': 0.1,
+                                       'is_home': False, 'b365h': 2.0, 'b365d': 3.0, 'b365a': 2.5,
+                                       'home_team': away, 'away_team': home, 'ftr': row['ftr']}
+                                      for s, c, w in zip(a_stat['scored'][-20:], a_stat['conceded'][-20:], a_stat['wins'][-20:])]
+
+                    h_adv = fe.extract_features(h_matches_list, home, opponent_name=away, is_home=True)
+                    for k, v in h_adv.items():
+                        feat[f'h_{k}'] = v
+
+                    a_adv = fe.extract_features(a_matches_list, away, opponent_name=home, is_home=False)
+                    for k, v in a_adv.items():
+                        feat[f'a_{k}'] = v
+
+                    for key in ['w3_ppg', 'w5_ppg', 'w10_ppg', 'w20_ppg']:
+                        hk = f'h_{key}'
+                        ak = f'a_{key}'
+                        if hk in feat and ak in feat:
+                            feat[f'diff_{key}'] = feat[hk] - feat[ak]
+
+                    for key in ['momentum_points', 'momentum_goals', 'consistency_score']:
+                        hk = f'h_{key}'
+                        ak = f'a_{key}'
+                        if hk in feat and ak in feat:
+                            feat[f'diff_{key}'] = feat[hk] - feat[ak]
+                except Exception:
+                    pass
+
+                features.append(feat)
                 labels.append(row['target'])
             
             # Takım istatistiklerini güncelle
@@ -121,59 +171,73 @@ class MLPredictor:
         y = np.array(labels)
         return X, y, team_stats
 
-    def train_model(self):
-        """Veritabanından veri çekip Ensemble ML modelini eğitir."""
+    def train_model(self, league_id=None):
+        """Lige özel veya genel Ensemble ML modelini eğitir."""
         if not ML_AVAILABLE:
-            logger.error("ML kütüphaneleri eksik! 'pip install scikit-learn xgboost lightgbm' çalıştırın.")
+            logger.error("ML kütüphaneleri eksik!")
             return False
 
         try:
-            logger.info("🧠 Yapay Zeka modeli eğitiliyor. En iyi konfigürasyon kontrol ediliyor...")
+            model_key = league_id if league_id else 'general'
+            logger.info(f"🧠 Yapay Zeka modeli eğitiliyor ({model_key})...")
             
-            # Şampiyon konfigürasyonu varsa onu kullan
-            champion = self.db.get_best_historical_experiment()
-            if champion:
-                try:
-                    config = json.loads(champion["config_json"])
-                    logger.info(f"🏆 Şampiyon konfigürasyonu bulundu (ID: {champion['id']}), onunla eğitiliyor...")
-                    return self.train_model_with_config(config)
-                except Exception as e:
-                    logger.warning(f"⚠️ Şampiyon konfigürasyonu yüklenemedi, varsayılan modele dönülüyor: {e}")
+            if not league_id:
+                champion = self.db.get_best_historical_experiment()
+                if champion:
+                    try:
+                        config = json.loads(champion["config_json"])
+                        return self.train_model_with_config(config)
+                    except (json.JSONDecodeError, KeyError, TypeError) as e:
+                        logger.warning(f"Champion config parse hatası: {e}")
 
-            X, y, _ = self._prepare_data()
+            X, y, _ = self._prepare_data(league_id)
             if X.empty:
-                logger.error("Eğitim için yeterli veri bulunamadı.")
+                logger.error(f"{model_key} için yeterli veri bulunamadı.")
                 return False
 
-            # Veriyi ölçeklendir
-            self.scaler = StandardScaler()
-            X_scaled = self.scaler.fit_transform(X)
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X)
 
-            # Modelleri Tanımla
             clf1 = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss', n_estimators=100, random_state=42)
             clf2 = LGBMClassifier(n_estimators=100, random_state=42, verbose=-1)
             clf3 = RandomForestClassifier(n_estimators=100, random_state=42)
             
-            # Ensemble (Voting) Classifier (Soft voting ile olasılıkları ortalar)
-            self.model = VotingClassifier(
+            model = VotingClassifier(
                 estimators=[('xgb', clf1), ('lgbm', clf2), ('rf', clf3)],
                 voting='soft'
             )
             
-            logger.info(f"🚀 Modeller eğitiliyor... (Eğitim Verisi: {len(X)} maç)")
-            self.model.fit(X_scaled, y)
+            logger.info(f"🚀 Modeller eğitiliyor... (Lig: {model_key}, Veri: {len(X)} maç)")
+            model.fit(X_scaled, y)
             
-            self.feature_columns = list(X.columns)
+            feats = list(X.columns)
 
-            # Modeli Kaydet
-            joblib.dump(self.model, self.model_path)
-            joblib.dump(self.scaler, self.scaler_path)
-            joblib.dump(self.feature_columns, self.features_path)
-            logger.info("✅ Yapay Zeka modeli başarıyla eğitildi ve kaydedildi.")
+            prefix = f"{league_id}_" if league_id else "general_"
+            joblib.dump(model, os.path.join(self.models_dir, f"{prefix}model.pkl"))
+            joblib.dump(scaler, os.path.join(self.models_dir, f"{prefix}scaler.pkl"))
+            joblib.dump(feats, os.path.join(self.models_dir, f"{prefix}features.pkl"))
+            
+            self.models[model_key] = model
+            self.scalers[model_key] = scaler
+            self.feature_columns[model_key] = feats
+            self.last_loaded_time[model_key] = time.time()
+            
+            logger.info(f"✅ {model_key} modeli başarıyla eğitildi ve kaydedildi.")
             return True
         except Exception as e:
-            logger.error(f"Eğitim hatası: {e}", exc_info=True)
+            logger.error(f"Eğitim hatası ({league_id}): {e}", exc_info=True)
             return False
+
+    def train_all_leagues(self):
+        """Veritabanındaki tüm ligler için ayrı ayrı model eğitir."""
+        matches = self.db.get_matches()
+        df = pd.DataFrame(matches)
+        if 'league_div' not in df.columns: return
+        leagues = df['league_div'].dropna().unique()
+        logger.info(f"🌍 {len(leagues)} farklı lig bulundu. Modeller ayrı ayrı eğitilecek...")
+        for l in leagues:
+            self.train_model(league_id=l)
+        self.train_model(league_id=None)
 
     def train_model_with_config(self, config: dict) -> bool:
         """
@@ -194,75 +258,107 @@ class MLPredictor:
             if df.empty:
                 return False
 
-            X, y = _build_features(df, config.get("feature_params", {}))
+            X, y, sw = _build_features(df, config.get("feature_params", {}))
             if X.empty or len(y) < 50:
                 return False
 
-            self.scaler = StandardScaler()
-            X_scaled = self.scaler.fit_transform(X)
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X)
 
-            self.model = _build_model(config["model_type"], config.get("model_params", {}))
-            self.model.fit(X_scaled, y)
-            self.feature_columns = list(X.columns)
+            model = _build_model(config["model_type"], config.get("model_params", {}))
+            try:
+                model.fit(X_scaled, y, sample_weight=sw)
+            except TypeError:
+                logger.debug("Model sample_weight desteklemiyor, weightsiz eğitiliyor.")
+                model.fit(X_scaled, y)
+            feats = list(X.columns)
 
-            joblib.dump(self.model, self.model_path)
-            joblib.dump(self.scaler, self.scaler_path)
-            joblib.dump(self.feature_columns, self.features_path)
-            logger.info("✅ Champion model diske kaydedildi ve aktif hale getirildi.")
+            joblib.dump(model, self.model_path)
+            joblib.dump(scaler, self.scaler_path)
+            joblib.dump(feats, self.features_path)
+            
+            self.models['general'] = model
+            self.scalers['general'] = scaler
+            self.feature_columns['general'] = feats
+            self.last_loaded_time['general'] = time.time()
+            
+            logger.info("✅ Champion model diske kaydedildi ve genel model olarak aktif hale getirildi.")
             return True
         except Exception as e:
             logger.error(f"Champion eğitim hatası: {e}", exc_info=True)
             return False
 
 
-    def load_model(self):
-        """Eğitilmiş modeli diske kaydettiğimiz yerden yükler."""
+    def load_model(self, league_id=None):
+        """İlgili ligin veya genel modeli diske kaydettiğimiz yerden yükler."""
+        if not ML_AVAILABLE: return False
         try:
-            if os.path.exists(self.model_path) and os.path.exists(self.scaler_path):
-                self.model = joblib.load(self.model_path)
-                self.scaler = joblib.load(self.scaler_path)
-                self.feature_columns = joblib.load(self.features_path)
-                self.last_loaded_time = time.time()
-                logger.info("🤖 Yapay Zeka modeli yüklendi.")
+            model_key = league_id if league_id else 'general'
+            prefix = f"{league_id}_" if league_id else "general_"
+            m_path = os.path.join(self.models_dir, f"{prefix}model.pkl")
+            s_path = os.path.join(self.models_dir, f"{prefix}scaler.pkl")
+            f_path = os.path.join(self.models_dir, f"{prefix}features.pkl")
+            
+            if os.path.exists(m_path) and os.path.exists(s_path):
+                self.models[model_key] = joblib.load(m_path)
+                self.scalers[model_key] = joblib.load(s_path)
+                self.feature_columns[model_key] = joblib.load(f_path)
+                self.last_loaded_time[model_key] = time.time()
+                logger.info(f"🤖 Yapay Zeka modeli yüklendi: {model_key}")
                 return True
         except Exception as e:
-            logger.error(f"Model yükleme hatası: {e}")
+            logger.error(f"Model yükleme hatası ({model_key}): {e}")
         return False
 
-    def reload_if_stale(self):
-        """Model dosyası güncellenmişse veya şampiyon değişmişse modeli yeniden yükler."""
-        if not ML_AVAILABLE:
-            return
-            
-        # Dosya modifikasyon zamanını kontrol et
-        if os.path.exists(self.model_path):
-            mtime = os.path.getmtime(self.model_path)
-            if mtime > self.last_loaded_time:
-                logger.info("🔄 Yeni model dosyası algılandı, yeniden yükleniyor...")
-                self.load_model()
-                return
+    def reload_if_stale(self, league_id=None):
+        """Model dosyası güncellenmişse modeli yeniden yükler."""
+        if not ML_AVAILABLE: return
+        model_key = league_id if league_id else 'general'
+        prefix = f"{league_id}_" if league_id else "general_"
+        m_path = os.path.join(self.models_dir, f"{prefix}model.pkl")
+        
+        if os.path.exists(m_path):
+            mtime = os.path.getmtime(m_path)
+            last = self.last_loaded_time.get(model_key, 0)
+            if mtime > last:
+                logger.info(f"🔄 Yeni model dosyası algılandı ({model_key}), yeniden yükleniyor...")
+                self.load_model(league_id)
 
-        # Alternatif: DB'den şampiyon ID kontrolü de yapılabilir 
-        # (Ancak AutoResearcher zaten dosyayı güncellediği için mtime yeterli)
-
-    def predict_match_ml(self, home_team, away_team, league_id=None, season_id=None):
+    def predict_match_ml(self, home_team, away_team, league_id=None, season_id=None, match_date=None):
         """Eğitilmiş Yapay Zeka modeli ile tek maçın sonucunu tahmin eder."""
         try:
+            _t0 = time.time()
             if not ML_AVAILABLE:
                 return {"error": "ML kütüphaneleri yüklü değil. Gelişmiş özellikler devre dışı."}
             
-            # Her tahminden önce güncellik kontrolü
-            self.reload_if_stale()
-                
-            if not self.model:
-                # Otomatik eğit
-                success = self.train_model()
-                if not success:
-                    return {"error": "Model eğitilemedi, yeterli veri yok veya XGBoost hatası."}
+            # Güncellik kontrolü
+            self.reload_if_stale(league_id)
+            if not league_id: self.reload_if_stale(None)
+            
+            model_key = league_id if (league_id and league_id in self.models) else 'general'
+            
+            if model_key not in self.models:
+                if league_id and self.load_model(league_id):
+                    model_key = league_id
+                elif self.load_model(None):
+                    model_key = 'general'
+                else:
+                    if league_id and self.train_model(league_id):
+                        model_key = league_id
+                    elif self.train_model(None):
+                        model_key = 'general'
+                    else:
+                        return {"error": "Model eğitilemedi, yeterli veri yok veya XGBoost hatası."}
 
-            # ⚡ Optimizasyon: Sadece ilgili takımların son 100 maçını getir (Önceden 100k satır taranıyordu)
+            _t1 = time.time()
+            model = self.models[model_key]
+            scaler = self.scalers[model_key]
+            features_col = self.feature_columns[model_key]
+
+            # Takım maçlarını getir (cache'li)
             h_matches_raw = self.db.get_team_matches(home_team, limit=100)
             a_matches_raw = self.db.get_team_matches(away_team, limit=100)
+            _t2 = time.time()
             
             if not h_matches_raw and not a_matches_raw:
                 return {"error": "Veritabanı boş veya bu takımlar için veri yok."}
@@ -376,25 +472,103 @@ class MLPredictor:
             feature_dict['b365d'] = float(b365d)
             feature_dict['b365a'] = float(b365a)
 
+            # Odds-implied probabilities (vig arındırılmış)
+            total_implied = (1.0/b365h + 1.0/b365d + 1.0/b365a) if b365h > 0 and b365d > 0 and b365a > 0 else 1.0
+            feature_dict['odds_implied_home'] = (1.0/b365h) / total_implied if b365h > 0 else 0.33
+            feature_dict['odds_implied_draw'] = (1.0/b365d) / total_implied if b365d > 0 else 0.33
+            feature_dict['odds_implied_away'] = (1.0/b365a) / total_implied if b365a > 0 else 0.33
+            feature_dict['odds_value_home'] = feature_dict.get('home_win_rate', 0.5) - feature_dict['odds_implied_home']
+            feature_dict['odds_value_away'] = feature_dict.get('away_win_rate', 0.5) - feature_dict['odds_implied_away']
+
+            # Elo Rating features (cached)
+            try:
+                from elo import EloSystem
+                now_ts = time.time()
+                if self._elo_cache is None or (now_ts - self._elo_cache_time) > 300:
+                    self._elo_cache = EloSystem(self.db)
+                    self._elo_cache_time = now_ts
+                elo = self._elo_cache
+                elo_features = elo.get_features(home_team, away_team)
+                feature_dict.update(elo_features)
+            except Exception:
+                feature_dict['home_elo'] = 1500.0
+                feature_dict['away_elo'] = 1500.0
+                feature_dict['elo_diff'] = 0.0
+
+            # ─── Gelişmiş Feature Engineering (100+ feature) ───
+            try:
+                from feature_engineering import FeatureEngineer
+                fe = FeatureEngineer()
+
+                h_adv = fe.extract_features(h_matches_raw, home_team, opponent_name=away_team, is_home=True)
+                for k, v in h_adv.items():
+                    feature_dict[f'h_{k}'] = v
+
+                a_adv = fe.extract_features(a_matches_raw, away_team, opponent_name=home_team, is_home=False)
+                for k, v in a_adv.items():
+                    feature_dict[f'a_{k}'] = v
+
+                # Ev/deplasman farkı feature'ları
+                for key in ['w3_ppg', 'w5_ppg', 'w10_ppg', 'w20_ppg']:
+                    hk = f'h_{key}'
+                    ak = f'a_{key}'
+                    if hk in feature_dict and ak in feature_dict:
+                        feature_dict[f'diff_{key}'] = feature_dict[hk] - feature_dict[ak]
+
+                for key in ['momentum_points', 'momentum_goals', 'consistency_score']:
+                    hk = f'h_{key}'
+                    ak = f'a_{key}'
+                    if hk in feature_dict and ak in feature_dict:
+                        feature_dict[f'diff_{key}'] = feature_dict[hk] - feature_dict[ak]
+            except Exception as e:
+                logger.debug(f"Gelişmiş feature hatası: {e}")
+                feature_dict['elo_home_win_prob'] = 0.33
+                feature_dict['elo_draw_prob'] = 0.33
+                feature_dict['elo_away_win_prob'] = 0.33
+
             # Eksik feature varsa 0.0 doldur
-            if self.feature_columns is not None:
-                for col in self.feature_columns:
+            if features_col is not None:
+                for col in features_col:
                     col_str = str(col)
                     if col_str not in feature_dict:
                         feature_dict[col_str] = 0.0
 
-            X_pred = pd.DataFrame([feature_dict])[self.feature_columns]
-            X_pred_scaled = self.scaler.transform(X_pred)
+            X_pred = pd.DataFrame([feature_dict])[features_col]
+            X_pred_scaled = scaler.transform(X_pred)
             
             # Olasılıkları Çıkar [Beraberlik (0), Ev (1), Deplasman (2)]
-            probs = self.model.predict_proba(X_pred_scaled)[0]
+            probs = model.predict_proba(X_pred_scaled)[0]
             
-            class_mapping = {c: p for c, p in zip(self.model.classes_, probs)}
+            class_mapping = {c: p for c, p in zip(model.classes_, probs)}
             
             # 0: Draw, 1: Home, 2: Away
             draw_prob = class_mapping.get(0, 0.0)
             home_win_prob = class_mapping.get(1, 0.0)
             away_win_prob = class_mapping.get(2, 0.0)
+
+            # ─── Kalibrasyon (cached) ───
+            try:
+                from calibrator import ModelCalibrator
+                if self._calibrator_cache is None:
+                    self._calibrator_cache = ModelCalibrator()
+                calibrator = self._calibrator_cache
+                # Tier'ı geçici olarak belirle (kalibrasyon için)
+                raw_confidence = max(home_win_prob, away_win_prob, draw_prob)
+                raw_tier = "PLATINUM" if raw_confidence >= 0.65 else ("GOLD" if raw_confidence >= 0.53 else ("SILVER" if raw_confidence >= 0.42 else "BRONZE"))
+
+                # Her olasılığı kalibre et
+                home_win_prob = calibrator.calibrate_tier(home_win_prob, raw_tier)
+                draw_prob = calibrator.calibrate_tier(draw_prob, raw_tier)
+                away_win_prob = calibrator.calibrate_tier(away_win_prob, raw_tier)
+
+                # Normalize et (toplamı 1 olmalı)
+                total = home_win_prob + draw_prob + away_win_prob
+                if total > 0:
+                    home_win_prob /= total
+                    draw_prob /= total
+                    away_win_prob /= total
+            except Exception:
+                pass  # Kalibrasyon başarısızsa ham olasılıkları kullan
             
             # ─── 4-Layer Gelişmiş Analiz ───
             
@@ -428,7 +602,7 @@ class MLPredictor:
             a_trend = (a_form_score - a_ppg)
 
             # Layer 3: Bağlamsal (Rest Days - Heuristik)
-            # Not: ESPN API'den tam tarih farkı almak için scraper'dan veri beslenmeli, şimdilik nötr.
+            # Not: Harici API'den tam tarih farkı almak için scraper'dan veri beslenmeli, şimdilik nötr.
             rest_advantage = 0 
             
             # Layer 4: Pattern (Season Phase)
@@ -451,8 +625,8 @@ class MLPredictor:
                                 relegation_pressure = True
                             if h_pos <= 3 or a_pos <= 3:
                                 must_win = True
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Lig tablosu bilgisi alınamadı: {e}")
 
             # ─── Tier Sınıflandırma (Re-Calibrated for 1X2 Market) ───
             confidence = max(home_win_prob, away_win_prob, draw_prob)

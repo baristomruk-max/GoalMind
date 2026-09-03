@@ -34,12 +34,43 @@ wheels/
 models_archive/
 catboost_info/
 
+# Data (büyük CSV dosyaları - manually add if needed)
+data/standard/*.csv
+data/extra/*.csv
+data/bsd_*.csv
+data/*.csv
+data/*.json
+
 # Environment
 .env
 .venv
 venv/
 ENV/
 
+# Logs
+*.log
+logs/
+
 # OS
 .DS_Store
 Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+check_dates.py
+import_bsd.py
+proof_*.py
+
+# Playwright
+.playwright-mcp/
+
+# Flask
+instance/

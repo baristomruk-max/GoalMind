@@ -9,6 +9,17 @@
         <p style="color: var(--text-light); margin-top: 10px;">Geçmiş tahminlerin gerçek maç skorlarıyla karşılaştırılması.</p>
     </div>
 
+    <!-- Filtreleme ve Araçlar -->
+    <div class="card shadow" style="margin-bottom: 24px; padding: 15px; display: flex; gap: 15px; align-items: center; background: rgba(30, 41, 59, 0.5);">
+        <div style="flex: 1;">
+            <input type="text" id="date-filter" placeholder="📅 Tarihe göre filtrele (örn: 2026-03-15)..." 
+                   style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-dark); color: white;">
+        </div>
+        <button id="btn-refresh-results" class="btn btn-secondary" onclick="location.reload()" style="padding: 10px 20px;">
+            🔄 Listeyi Yenile
+        </button>
+    </div>
+
     <!-- Yükleme Göstergesi -->
     <div id="loading" style="text-align: center; padding: 40px;">
         <div class="spinner"></div>
@@ -18,8 +29,8 @@
     <!-- Sonuçlar Paneli -->
     <div id="results-panel" style="display: none;">
         
+        <!-- Özet Kartları -->
         <div class="grid" style="grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px;">
-            <!-- 1X2 Stats -->
             <div class="card stat-card shadow" style="border-left: 5px solid var(--primary);">
                 <div class="stat-title">1X2 Toplam Tahmin</div>
                 <div class="stat-value" id="stat-total">0</div>
@@ -33,18 +44,29 @@
                 <div class="stat-value" id="stat-rate" style="color: var(--primary);">%0.0</div>
             </div>
 
-            <!-- Over 2.5 Stats -->
-            <div class="card stat-card shadow" style="border-left: 5px solid var(--success);">
+            <div class="card stat-card shadow" style="border-left: 5px solid #0ea5e9;">
                 <div class="stat-title">Over 2.5 Toplam</div>
                 <div class="stat-value" id="o25-total">0</div>
             </div>
-            <div class="card stat-card shadow" style="border-left: 5px solid var(--success);">
+            <div class="card stat-card shadow" style="border-left: 5px solid #10b981;">
                 <div class="stat-title">Over 2.5 Başarılı</div>
-                <div class="stat-value" id="o25-won" style="color: var(--success);">0</div>
+                <div class="stat-value" id="o25-won" style="color: #10b981;">0</div>
             </div>
-            <div class="card stat-card shadow" style="border-left: 5px solid var(--success);">
+            <div class="card stat-card shadow" style="border-left: 5px solid #0ea5e9;">
                 <div class="stat-title">Over 2.5 Başarı Oranı</div>
-                <div class="stat-value" id="o25-rate" style="color: var(--success);">%0.0</div>
+                <div class="stat-value" id="o25-rate" style="color: #0ea5e9;">%0.0</div>
+            </div>
+        </div>
+
+        <!-- Günlük Başarı Tablosu -->
+        <div class="card shadow" style="margin-bottom: 30px; padding: 0; overflow: hidden;">
+            <div style="padding: 15px 20px; background: rgba(139, 92, 246, 0.1); border-bottom: 1px solid var(--border);">
+                <h3 style="margin: 0; color: #a78bfa;">📅 Günlük Başarı Dağılımı</h3>
+            </div>
+            <div style="max-height: 200px; overflow-y: auto; padding: 10px;">
+                <div id="daily-stats-container" style="display: flex; flex-wrap: wrap; gap: 10px; padding: 10px;">
+                    <!-- JS ile dolacak -->
+                </div>
             </div>
         </div>
 
@@ -67,12 +89,12 @@
                 <thead>
                     <tr>
                         <th>Tarih</th>
-                        <th>Ev Sahibi</th>
-                        <th>Deplasman</th>
-                        <th>Tahminimiz / Güven</th>
+                        <th>Maç</th>
+                        <th>Tahmin / Güven</th>
                         <th>Over 2.5</th>
                         <th>Gerçek Skor</th>
                         <th>Durum</th>
+                        <th>İşlemler</th>
                     </tr>
                 </thead>
                 <tbody id="history-body">
@@ -85,8 +107,7 @@
 
 <style>
 .spinner {
-    width: 40px;
-    height: 40px;
+    width: 40px; height: 40px;
     border: 4px solid rgba(255,255,255,0.1);
     border-left-color: var(--primary);
     border-radius: 50%;
@@ -94,6 +115,18 @@
     display: inline-block;
 }
 @keyframes spin { 100% { transform: rotate(360deg); } }
+
+.daily-stat-chip {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    min-width: 120px;
+}
+
 .acc-status {
     padding: 4px 12px;
     border-radius: 12px;
@@ -103,20 +136,51 @@
 .acc-won { background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid var(--success); }
 .acc-lost { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); }
 .acc-pending { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; }
+
+.btn-icon {
+    width: 32px; height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+}
+.btn-icon:hover { background: rgba(255,255,255,0.1); transform: scale(1.1); }
+.btn-delete:hover { background: rgba(239, 68, 68, 0.2); color: #ef4444; border-color: #ef4444; }
+.btn-update:hover { background: rgba(14, 165, 233, 0.2); color: #0ea5e9; border-color: #0ea5e9; }
 </style>
 
 <script>
+let allPredictions = [];
+
 document.addEventListener("DOMContentLoaded", async () => {
+    await loadData();
+    
+    // Filtreleme mantığı
+    document.getElementById('date-filter').addEventListener('input', (e) => {
+        const val = e.target.value.toLowerCase();
+        filterData(val);
+    });
+});
+
+async function loadData() {
     const loading = document.getElementById('loading');
     const results = document.getElementById('results-panel');
     const tbody = document.getElementById('history-body');
+    const dailyContainer = document.getElementById('daily-stats-container');
 
     try {
         const response = await fetch('/api/accuracy');
         const data = await response.json();
-
         if (!response.ok) throw new Error(data.error);
 
+        allPredictions = data.history || [];
+        
+        // Üst İstatistikler
         animateNumber('stat-total', data.total);
         animateNumber('stat-won', data.won);
         animateNumber('stat-rate', '%' + (data.hit_rate || 0));
@@ -127,47 +191,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         
         document.getElementById('last-train-date').textContent = data.last_train || 'Bilinmiyor';
 
-        if (data.history && data.history.length > 0) {
-            data.history.forEach(item => {
-                const row = document.createElement('tr');
-                
-                let bClass = 'acc-pending';
-                let bText = '⏳ Bekliyor';
-                let scoreText = '- : -';
-
-                if (item.status === 'won') {
-                    bClass = 'acc-won';
-                    bText = '✅ KAZANDI';
-                    scoreText = `${item.actual_home_score} - ${item.actual_away_score}`;
-                } else if (item.status === 'lost') {
-                    bClass = 'acc-lost';
-                    bText = '❌ KAYBETTİ';
-                    scoreText = `${item.actual_home_score} - ${item.actual_away_score}`;
-                }
-
-                let predSymbol = "X";
-                if (item.predicted_result === "1") predSymbol = "Ev Sahibi (1)";
-                if (item.predicted_result === "2") predSymbol = "Deplasman (2)";
-
-                const gm = item.goals_market || {};
-                const o25_val = gm.over_25 || 0;
-                const o25_text = o25_val > 0 ? `%${o25_val.toFixed(1)}` : '-';
-                const o25_style = o25_val > 65 ? 'color: var(--success); font-weight: bold;' : 'color: var(--text-light);';
-
-                row.innerHTML = `
-                    <td>${item.match_date}</td>
-                    <td style="font-weight:500;">${item.home_team}</td>
-                    <td style="font-weight:500;">${item.away_team}</td>
-                    <td><strong style="color:var(--primary)">${predSymbol}</strong> <small>(%${item.confidence.toFixed(1)})</small></td>
-                    <td style="${o25_style}">${o25_text}</td>
-                    <td style="font-size:16px; font-weight:bold; letter-spacing:2px;">${scoreText}</td>
-                    <td><span class="acc-status ${bClass}">${bText}</span></td>
-                `;
-                tbody.appendChild(row);
-            });
-        } else {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Henüz kaydedilmiş bir tahmin bulunmuyor.</td></tr>';
-        }
+        renderTable(allPredictions);
+        renderDailyStats(allPredictions);
 
         loading.style.display = 'none';
         results.style.display = 'block';
@@ -175,50 +200,152 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Eğitim Butonu İşlemleri
         const btnTrain = document.getElementById('btn-train');
         btnTrain.addEventListener('click', async () => {
-            if (!confirm('Modeli yeni verilerle yeniden eğitmek istiyor musunuz? Bu işlem arka planda birkaç saniye sürebilir.')) return;
-            
-            btnTrain.disabled = true;
-            btnTrain.innerHTML = '⚙️ Eğitiliyor...';
-            
+            if (!confirm('Modeli yeni verilerle yeniden eğitmek istiyor musunuz?')) return;
+            btnTrain.disabled = true; btnTrain.innerHTML = '⚙️ Eğitiliyor...';
             try {
                 const res = await fetch('/api/model/train', { method: 'POST' });
-                const rData = await res.json();
-                
-                if (res.ok) {
-                    alert('Eğitim başlatıldı! Logları siyah pencereden takip edebilirsiniz. Birkaç dakika sonra sayfayı yenilediğinizde güncelleme tarihini görebilirsiniz.');
-                } else {
-                    alert('Hata: ' + rData.error);
-                }
-            } catch (err) {
-                alert('İşlem sırasında bir hata oluştu.');
+                if (res.ok) alert('Eğitim başlatıldı! Logları siyah pencereden takip edebilirsiniz.');
             } finally {
-                btnTrain.disabled = false;
-                btnTrain.innerHTML = '🚀 Modeli Güncelle';
+                btnTrain.disabled = false; btnTrain.innerHTML = '🚀 Modeli Güncelle';
             }
         });
 
     } catch (e) {
         loading.innerHTML = `<div style="color:var(--danger)">Hata: ${e.message}</div>`;
     }
-});
+}
 
-// Helper for number animation (from main.js)
+function renderTable(predictions) {
+    const tbody = document.getElementById('history-body');
+    tbody.innerHTML = '';
+    
+    if (predictions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Tahmin bulunamadı.</td></tr>';
+        return;
+    }
+
+    predictions.forEach(item => {
+        const row = document.createElement('tr');
+        
+        let bClass = 'acc-pending';
+        let bText = '⏳ Bekliyor';
+        let scoreText = '- : -';
+
+        if (item.status === 'won') {
+            bClass = 'acc-won'; bText = '✅ KAZANDI';
+            scoreText = `${item.actual_home_score} - ${item.actual_away_score}`;
+        } else if (item.status === 'lost') {
+            bClass = 'acc-lost'; bText = '❌ KAYBETTİ';
+            scoreText = `${item.actual_home_score} - ${item.actual_away_score}`;
+        }
+
+        const predSymbol = item.predicted_result == "1" ? "1" : (item.predicted_result == "2" ? "2" : "X");
+        const gm = item.goals_market || {};
+        const o25_val = gm.over_25 || 0;
+        const o25_text = o25_val > 0 ? `%${o25_val.toFixed(0)}` : '-';
+
+        row.innerHTML = `
+            <td><small>${item.match_date}</small></td>
+            <td>
+                <div style="font-weight:600; font-size:0.9rem;">${item.home_team}</div>
+                <div style="font-weight:600; font-size:0.9rem;">${item.away_team}</div>
+            </td>
+            <td><strong style="color:var(--primary)">${predSymbol}</strong> <small>(%${item.confidence.toFixed(0)})</small></td>
+            <td>${o25_text}</td>
+            <td style="font-family:monospace; font-size:1.1rem; font-weight:bold;">${scoreText}</td>
+            <td><span class="acc-status ${bClass}">${bText}</span></td>
+            <td>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn-icon btn-update" onclick="updateResult('${item.id}', '${item.home_team}', '${item.away_team}')" title="Sonuç Güncelle">📝</button>
+                    <button class="btn-icon btn-delete" onclick="deletePrediction('${item.id}')" title="Sil">🗑️</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function renderDailyStats(predictions) {
+    const container = document.getElementById('daily-stats-container');
+    container.innerHTML = '';
+    
+    const daily = {};
+    predictions.forEach(p => {
+        if (p.status === 'pending') return;
+        const date = p.match_date;
+        if (!daily[date]) daily[date] = { total: 0, won: 0 };
+        daily[date].total++;
+        if (p.status === 'won') daily[date].won++;
+    });
+
+    // Tarihe göre sırala (Yeni önce)
+    Object.keys(daily).sort().reverse().forEach(date => {
+        const s = daily[date];
+        const rate = ((s.won / s.total) * 100).toFixed(0);
+        const chip = document.createElement('div');
+        chip.className = 'daily-stat-chip';
+        chip.innerHTML = `
+            <div style="font-weight:bold; color:var(--text-light); margin-bottom:4px;">${date}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span>${s.won}/${s.total}</span>
+                <span style="color:${rate > 50 ? 'var(--success)' : 'var(--danger)'}">%${rate}</span>
+            </div>
+        `;
+        container.appendChild(chip);
+    });
+}
+
+function filterData(val) {
+    const filtered = allPredictions.filter(p => 
+        p.match_date.includes(val) || 
+        p.home_team.toLowerCase().includes(val) || 
+        p.away_team.toLowerCase().includes(val)
+    );
+    renderTable(filtered);
+}
+
+async function deletePrediction(id) {
+    if (!confirm('Bu tahmini silmek istediğinize emin misiniz?')) return;
+    const res = await fetch('/api/predictions/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id})
+    });
+    if (res.ok) loadData();
+    else alert('Silme hatası oluştu.');
+}
+
+async function updateResult(id, home, away) {
+    const score = prompt(`${home} vs ${away} maçı sonucunu giriniz (örn: 2-1):`);
+    if (!score) return;
+    const parts = score.split('-');
+    if (parts.length !== 2) { alert('Hatalı format! 0-0 gibi giriniz.'); return; }
+    
+    const res = await fetch('/api/predictions/update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            id, 
+            home_score: parseInt(parts[0]), 
+            away_score: parseInt(parts[1])
+        })
+    });
+    if (res.ok) loadData();
+    else alert('Güncelleme hatası oluştu.');
+}
+
 function animateNumber(id, end) {
     const el = document.getElementById(id);
     let start = 0;
     const isPerc = end.toString().includes('%');
     const endNum = parseFloat(end.toString().replace('%', ''));
     if (isNaN(endNum)) { el.textContent = end; return; }
-    
-    const duration = 1000;
-    const stepTime = Math.abs(Math.floor(duration / (endNum || 1)));
-    
+    const duration = 800;
+    const stepTime = 20;
+    const increment = endNum / (duration / stepTime);
     const timer = setInterval(() => {
-        start += endNum / (duration / stepTime);
-        if (start >= endNum) {
-            start = endNum;
-            clearInterval(timer);
-        }
+        start += increment;
+        if (start >= endNum) { start = endNum; clearInterval(timer); }
         el.textContent = (isPerc ? '%' : '') + (start % 1 === 0 ? start : start.toFixed(1));
     }, stepTime);
 }
